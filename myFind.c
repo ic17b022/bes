@@ -1,22 +1,15 @@
 #include <stdio.h>
-#include <string.h>
+#include <dirent.h>
 #include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <errno.h>
 #include <unistd.h>
 
-//implementation of get_current_dir_name
-char *gnu_getcwd() {
-    unsigned int size = 100;
+void do_dir(const char *dir_name, const char *const *parms);
 
-    while (1) {
-        char *buffer = (char *) malloc(size);
-        if (getcwd(buffer, size) == buffer)
-            return buffer;
-        free(buffer);
-        //if (errno != ERANGE)
-        //return 0;
-        size *= 2;
-    }
-}
+void do_file(const char *file_name, const char *const *parms);
+char *gnu_getcwd();
 
 int main(int argc, char *argv[]) {
     int iRc = EXIT_SUCCESS;
@@ -91,4 +84,59 @@ int main(int argc, char *argv[]) {
     printf("Path:%s \n", path);
     free(path);
     return iRc;
+}
+
+//implementation of get_current_dir_name
+char *gnu_getcwd() {
+    unsigned int size = 100;
+
+    while (1) {
+        char *buffer = (char *) malloc(size);
+        if (getcwd(buffer, size) == buffer)
+            return buffer;
+        free(buffer);
+        //if (errno != ERANGE)
+        //return 0;
+        size *= 2;
+    }
+}
+
+void do_dir(const char *dir_name, const char *const *parms) {
+    DIR *directory = opendir(dir_name);
+    struct dirent *entry;
+    char *temp;
+
+    while (entry = readdir(directory)) {
+        if(strcmp(entry->d_name, "..") == 0 ||
+                strcmp(entry->d_name, ".") == 0)
+            continue;
+        temp = malloc(strlen(dir_name) + strlen(entry->d_name) + 2);  //+1 for '/', +1 for '\n'
+        if (temp) {
+            temp[0] = '\0';
+
+            strcat(temp, dir_name);
+            strcat(temp, "/");
+            strcat(temp, entry->d_name);
+
+            do_file(temp, parms);
+
+            free(temp);
+        }
+    }
+
+    closedir(directory);
+}
+
+void do_file(const char *file_name, const char *const *parms) {
+    struct stat buf;
+
+    int retWert = stat(file_name, &buf);
+    if (retWert == 0) {
+        printf("%s\n", file_name);
+        if (S_ISDIR(buf.st_mode)) {
+            do_dir(file_name, parms);
+        }
+    } else {
+        printf("%d", errno);
+    }
 }
