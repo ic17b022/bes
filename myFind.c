@@ -21,7 +21,7 @@ int main(int argc, char* argv[]) {
     //Getting Path
     char* path;
     int index = 1;
-    if (*argv[index] != '-') {
+    if (argv[index] != NULL && *argv[index] != '-') {
         path = malloc(strlen(argv[index]) + 1);
         strcpy(path, argv[index]);
         index++;
@@ -119,7 +119,7 @@ void do_dir(const char* dir_name, const char* const* parms) {
 void do_file(const char* file_name, const char* const* parms) {
     struct stat buf;
 
-    int retWert = stat(file_name, &buf);
+    int retWert = lstat(file_name, &buf);
     if (retWert == 0) {
         if (parms[3])
             printf("%s\n", file_name);
