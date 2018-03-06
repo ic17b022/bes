@@ -95,25 +95,28 @@ void do_dir(const char* dir_name, const char* const* parms) {
     struct dirent* entry;
     char* temp;
 
-    while ((entry = readdir(directory))) {      //yes, assignment is intended here.
-        if (strcmp(entry->d_name, "..") == 0 ||
-            strcmp(entry->d_name, ".") == 0)
-            continue;
-        temp = malloc(strlen(dir_name) + strlen(entry->d_name) + 2);  //+1 for '/', +1 for '\n'
-        if (temp) {
-            temp[0] = '\0';
+    if(directory) {
+        while ((entry = readdir(directory))) {      //yes, assignment is intended here.
+            if (strcmp(entry->d_name, "..") == 0 ||
+                strcmp(entry->d_name, ".") == 0)
+                continue;
+            temp = malloc(strlen(dir_name) + strlen(entry->d_name) + 1);  // +1 for '\n'
+            if (temp) {
+                temp[0] = '\0';
 
-            strcat(temp, dir_name);
-            strcat(temp, "/");
-            strcat(temp, entry->d_name);
+                strcat(temp, dir_name);
+                strcat(temp, entry->d_name);
 
-            do_file(temp, parms);
+                do_file(temp, parms);
 
-            free(temp);
+                free(temp);
+            }
         }
-    }
 
-    closedir(directory);
+        closedir(directory);
+    }else{
+        printf("myFind: '%s': %s", dir_name, strerror(errno));
+    }
 }
 
 void do_file(const char* file_name, const char* const* parms) {
@@ -128,6 +131,6 @@ void do_file(const char* file_name, const char* const* parms) {
             do_dir(file_name, parms);
         }
     } else {
-        printf("%d", errno);
+        printf("%s", strerror(errno));
     }
 }
