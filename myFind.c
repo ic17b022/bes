@@ -10,7 +10,7 @@ void do_dir(const char* dir_name, const char* const* parms);
 
 void do_file(const char* file_name, const char* const* parms);
 
-char* gnu_getcwd(void);
+char* get_cwd(void);
 
 int main(int argc, char* argv[]) {
     int iRc = EXIT_SUCCESS;
@@ -26,7 +26,7 @@ int main(int argc, char* argv[]) {
         strcpy(path, argv[index]);
         index++;
     } else {
-        path = gnu_getcwd();
+        path = get_cwd();
     }
     //Check User Input
     while (index < argc) {
@@ -75,8 +75,8 @@ int main(int argc, char* argv[]) {
     return iRc;
 }
 
-//implementation of get_current_dir_name
-char* gnu_getcwd(void) {
+//get current working directory
+char* get_cwd(void) {
     unsigned int size = 100;
 
     while (1) {
@@ -100,11 +100,12 @@ void do_dir(const char* dir_name, const char* const* parms) {
             if (strcmp(entry->d_name, "..") == 0 ||
                 strcmp(entry->d_name, ".") == 0)
                 continue;
-            temp = malloc(strlen(dir_name) + strlen(entry->d_name) + 1);  // +1 for '\n'
+            temp = malloc(strlen(dir_name) + strlen(entry->d_name) + 2);  // +1 for '/', +1 for '\n'
             if (temp) {
                 temp[0] = '\0';
 
                 strcat(temp, dir_name);
+                strcat(temp, "/");
                 strcat(temp, entry->d_name);
 
                 do_file(temp, parms);
@@ -115,7 +116,7 @@ void do_dir(const char* dir_name, const char* const* parms) {
 
         closedir(directory);
     }else{
-        printf("myFind: '%s': %s", dir_name, strerror(errno));
+        printf("myFind: '%s': %s \n", dir_name, strerror(errno));
     }
 }
 
@@ -131,6 +132,6 @@ void do_file(const char* file_name, const char* const* parms) {
             do_dir(file_name, parms);
         }
     } else {
-        printf("%s", strerror(errno));
+        printf("%s \n", strerror(errno));
     }
 }
