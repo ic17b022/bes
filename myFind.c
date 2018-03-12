@@ -14,59 +14,83 @@ char* gnu_getcwd(void);
 
 int main(int argc, char* argv[]) {
     int iRc = EXIT_SUCCESS;
+    int is_output_set =0;
+    //Getting Path
+    char* path ="";
+    int index = 1;
+
 
     //Preparing the Parms Array
-    const char* parms[5] = {'\0'};
+    const char *parms[argc - index];
+    for (int i = 0; i <= argc - index; i++) {
+        parms[i] = NULL;
+    }
 
-    //Getting Path
-    char* path;
-    int index = 1;
-    if (argv[index] != NULL && *argv[index] != '-') {
+    if(argc<2) {
+        iRc = EXIT_FAILURE;
+        printf("Ivalid arguments: myfind needs at least one Argument\nCorrect usage: myfind <file or directory> [ <aktion> ] ...");
+    }
+    if (iRc == EXIT_SUCCESS) {
         path = malloc(strlen(argv[index]) + 1);
         strcpy(path, argv[index]);
         index++;
-    } else {
-        path = gnu_getcwd();
-    }
-    //Check User Input
-    while (index < argc) {
-        if (strcmp(argv[index], "-user") == 0) {
-            if (argv[index + 1] != NULL && *argv[index + 1] != '-') {
-                parms[0] = argv[index + 1];
-            } else {
-                printf("Ivalid arguments\nCorrect usage: -user <name>/<uid>\n");
-                iRc = EXIT_FAILURE;
-            }
-        }
-        if (strcmp(argv[index], "-name") == 0) {
-            if (argv[index + 1] != NULL && *argv[index + 1] != '-') {
-                parms[1] = argv[index + 1];
-            } else {
-                printf("Ivalid arguments\nCorrect usage: -name <pattern>\n");
-                iRc = EXIT_FAILURE;
-            }
-        }
-        if (strcmp(argv[index], "-type") == 0) {
-            if (argv[index + 1] != NULL && *argv[index + 1] != '-') {
-                parms[2] = argv[index + 1];
-            } else {
-                printf("Ivalid arguments\nCorrect usage: -type [bcdpfls]\n");
-                iRc = EXIT_FAILURE;
-            }
-        }
-        if (strcmp(argv[index], "-print") == 0) {
-            parms[3] = argv[index];
-        }
-        if (strcmp(argv[index], "-ls") == 0) {
-            parms[4] = argv[index];
-        }
 
-        index++;
+        //index=2;
+        //Check User Input
+        while (index < argc) {
+            if (strcmp(argv[index], "-user") == 0) {
+                if (argv[index + 1] != NULL) {
+                    parms[index - 2] = argv[index];
+                    parms[index - 1] = argv[index + 1];
+                    index = index + 2;
+                    continue;
+                } else {
+                    printf("Ivalid arguments\nCorrect usage: -user <name>/<uid>\n");
+                    iRc = EXIT_FAILURE;
+                }
+            }
+            if (strcmp(argv[index], "-name") == 0) {
+                if (argv[index + 1] != NULL) {
+                    parms[index - 2] = argv[index];
+                    parms[index - 1] = argv[index + 1];
+                    index = index + 2;
+                    continue;
+                } else {
+                    printf("Ivalid arguments\nCorrect usage: -name <pattern>\n");
+                    iRc = EXIT_FAILURE;
+                }
+            }
+            if (strcmp(argv[index], "-type") == 0) {
+                if (argv[index + 1] != NULL) {
+                    parms[index - 2] = argv[index];
+                    parms[index - 1] = argv[index + 1];
+                    index = index + 2;
+                    continue;
+                } else {
+                    printf("Ivalid arguments\nCorrect usage: -type [bcdpfls]\n");
+                    iRc = EXIT_FAILURE;
+                }
+            }
+            if (strcmp(argv[index], "-print") == 0) {
+                parms[index - 2] = argv[index];
+                index++;
+                is_output_set++;
+                continue;
+            }
+            if (strcmp(argv[index], "-ls") == 0) {
+                parms[index - 2] = argv[index];
+                index++;
+                is_output_set++;
+                continue;
+            }
+            printf("Ivalid argument: %s \nSupported Arguments:\n-user <name>/<uid>\n-name <pattern>\n-type [bcdpfls]\n-print\n-ls",
+                   argv[index]);
+            iRc = EXIT_FAILURE;
+            break;
+        }
     }
     //add -print if no other output action was defined
-    if (parms[3] == NULL && parms[4] == NULL) {
-        parms[3] = "-print";
-    }
+    if(!is_output_set) parms[index-2]= "-print";
     //call do_file
     if (iRc == EXIT_SUCCESS)
         do_file(path, parms);
@@ -122,7 +146,7 @@ void do_dir(const char* dir_name, const char* const* parms) {
 void do_file(const char* file_name, const char* const* parms) {
     struct stat buf;
 
-    int retWert = lstat(file_name, &buf);
+    int retWert = stat(file_name, &buf);
     if (retWert == 0) {
         if (parms[3])
             printf("%s\n", file_name);
