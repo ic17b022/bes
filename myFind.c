@@ -1,3 +1,17 @@
+//*
+// @file myFind.c
+// Betriebssysteme myFind Beispiel
+// Beispiel 1
+//
+// @author Manuel Seifner
+// @author Oliver Safar
+// @date 2018/03/19
+//
+// @version 001
+//
+//
+
+// -------------------------------------------------------------- includes --
 #include <stdio.h>
 #include <dirent.h>
 #include <stdlib.h>
@@ -6,12 +20,61 @@
 #include <errno.h>
 #include <unistd.h>
 
+// --------------------------------------------------------------- defines --
+
+// -------------------------------------------------------------- typedefs --
+
+// --------------------------------------------------------------- globals --
+
+// ------------------------------------------------------------- functions --
+
+
+/**
+ * \brief Iterates over all Files in a directory and passes each file to the do-dir function.
+ *
+ *     This function uses the opendir system call to open a directory and then readdir to pass each file
+ *     into the do_file function.
+ *
+ *
+ * \param	dir_name    directory to be opened by the function
+ * \param   parms       parameter array defining which files should be printed as output
+ *
+ * \return	      void
+ *
+ */
 void do_dir(const char* dir_name, const char* const* parms);
 
+
+/**
+ * \brief Gets single file from do_dir and decides if file should be output or recursively calls do_dir in case
+ *          the file is a directory.
+ *
+ *     This function uses the lstat system call do gather information about the file. The information is passed
+ *     to the print function. If the file is a directory, do_dir is recursivly called.
+ *
+ *
+ * \param	file_name   file to be checked by the function
+ * \param   parms       parameter array defining which files should be printed as output
+ *
+ * \return	      void
+ *
+ */
 void do_file(const char* file_name, const char* const* parms);
 
 char* get_cwd(void);
 
+
+
+/**
+ * \brief Exemplarische Funktion
+ *
+ *     Diese Funktion gibt den übergebenen Parameter
+ *     auf der Konsole aus.
+ *
+ * \param	parameter  Auszugebender Parameter
+ * \return	      Status-Code
+ *
+ */
 int main(int argc, char* argv[]) {
     int iRc = EXIT_SUCCESS;
     int is_output_set =0;
@@ -159,3 +222,11 @@ void do_file(const char* file_name, const char* const* parms) {
         printf("%s \n", strerror(errno));
     }
 }
+// =================================================================== eof ==
+
+// Local Variables:
+// mode: c
+// c-mode: k&r
+// c-basic-offset: 8
+// indent-tabs-mode: t
+// End:
