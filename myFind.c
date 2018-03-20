@@ -179,11 +179,21 @@ void do_file(const char* file_name, const char* const* parms) {
                 printf("%9lu %7li %10s %3lu %8s %8s %10li %s %s\n", buf.st_ino, buf.st_blocks / posixly_correct_divisor,
                        permissions, buf.st_nlink, pwd->pw_name, grp->gr_name, buf.st_size, dateString, file_name);
             } else if (strcmp(parms[i], "-name") == 0) {
-                //todo: user in parms[i+1] behandeln
+                if (strcmp(getpwuid(buf.st_uid)->pw_name, parms[i + 1]) != 0)
+                    break;
                 i++;
             } else if (strcmp(parms[i], "-type") == 0) {
-                //todo: type in parms[i+1] behandeln
-                i++;
+                if ((strcmp("b", parms[i + 1]) == 0 && S_ISBLK(buf.st_mode)) ||
+                    (strcmp("c", parms[i + 1]) == 0 && S_ISCHR(buf.st_mode)) ||
+                    (strcmp("d", parms[i + 1]) == 0 && S_ISDIR(buf.st_mode)) ||
+                    (strcmp("p", parms[i + 1]) == 0 && S_ISFIFO(buf.st_mode)) ||
+                    (strcmp("f", parms[i + 1]) == 0 && S_ISREG(buf.st_mode)) ||
+                    (strcmp("l", parms[i + 1]) == 0 && S_ISLNK(buf.st_mode)) ||
+                    (strcmp("s", parms[i + 1]) == 0 && S_ISSOCK(buf.st_mode))) {
+                    i++;
+                    continue;
+                } else
+                    break;
             }
             i++;
         }
