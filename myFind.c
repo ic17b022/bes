@@ -19,6 +19,9 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <unistd.h>
+#include <pwd.h>
+#include <grp.h>
+#include <time.h>
 
 // --------------------------------------------------------------- defines --
 
@@ -63,6 +66,10 @@ void do_file(const char* file_name, const char* const* parms);
 
 char* get_cwd(void);
 
+void getPermissionsString(__mode_t mode, char* permissions);
+
+void getDateString(char* s, size_t size, time_t time);
+
 
 
 /**
@@ -77,21 +84,21 @@ char* get_cwd(void);
  */
 int main(int argc, char* argv[]) {
     int iRc = EXIT_SUCCESS;
-    int is_output_set =0;
+    int is_output_set = 0;
     //Getting Path
-    char* path ="";
+    char* path = NULL;
     int index = 1;
 
 
     //Preparing the Parms Array
-    const char *parms[argc - index];
+    const char* parms[argc - index];
     for (int i = 0; i <= argc - index; i++) {
         parms[i] = NULL;
     }
 
-    if(argc<2) {
+    if (argc < 2) {
         iRc = EXIT_FAILURE;
-        printf("Ivalid arguments: myfind needs at least one Argument\nCorrect usage: myfind <file or directory> [ <aktion> ] ...");
+        printf("Ivalid arguments: myfind needs at least one Argument\nCorrect usage: myfind <file or directory> [ <aktion> ] ...\n");
     }
     if (iRc == EXIT_SUCCESS) {
         path = malloc(strlen(argv[index]) + 1);
@@ -153,12 +160,14 @@ int main(int argc, char* argv[]) {
         }
     }
     //add -print if no other output action was defined
-    if(!is_output_set) parms[index-2]= "-print";
+    if (!is_output_set) parms[index - 2] = "-print";
     //call do_file
     if (iRc == EXIT_SUCCESS)
         do_file(path, parms);
 
-    free(path);
+    if (path)
+        free(path);
+
     return iRc;
 }
 
@@ -182,8 +191,8 @@ void do_dir(const char* dir_name, const char* const* parms) {
     struct dirent* entry;
     char* temp;
 
-    if(directory) {
-        while ((entry = readdir(directory))) {      //yes, assignment is intended here.
+    if (directory) {
+        while ((entry = readdir(directory))) {
             if (strcmp(entry->d_name, "..") == 0 ||
                 strcmp(entry->d_name, ".") == 0)
                 continue;
@@ -202,18 +211,46 @@ void do_dir(const char* dir_name, const char* const* parms) {
         }
 
         closedir(directory);
-    }else{
+    } else {
         printf("myFind: '%s': %s \n", dir_name, strerror(errno));
     }
 }
 
 void do_file(const char* file_name, const char* const* parms) {
     struct stat buf;
+    int i = 0;
+    int posixly_correct_divisor = 2;
+    char permissions[11];
+    struct group* grp;
+    struct passwd* pwd;
+    char dateString[13];
 
     int retWert = lstat(file_name, &buf);
     if (retWert == 0) {
-        if (parms[3])
-            printf("%s\n", file_name);
+        while (parms[i]) {
+            if (strcmp(parms[i], "-print") == 0)
+                printf("%s\n", file_name);
+            else if (strcmp(parms[i], "-ls") == 0) {
+                if (getenv("POSIXLY_CORRECT"))
+                    posixly_correct_divisor = 1;
+
+                getPermissionsString(buf.st_mode, permissions);
+                getDateString(dateString, sizeof(dateString), buf.st_mtim.tv_sec);
+                grp = getgrgid(buf.st_gid);
+                pwd = getpwuid(buf.st_uid);
+
+                printf("%9lu %7li %10s %3lu %8s %8s %10li %s %s\n", buf.st_ino, buf.st_blocks / posixly_correct_divisor,
+                       permissions, buf.st_nlink, pwd->pw_name, grp->gr_name, buf.st_size, dateString, file_name);
+            } else if (strcmp(parms[i], "-name") == 0) {
+                //todo: user in parms[i+1] behandeln
+                i++;
+            } else if (strcmp(parms[i], "-type") == 0) {
+                //todo: type in parms[i+1] behandeln
+                i++;
+            }
+            i++;
+        }
+
 
         if (S_ISDIR(buf.st_mode)) {
             do_dir(file_name, parms);
@@ -221,6 +258,38 @@ void do_file(const char* file_name, const char* const* parms) {
     } else {
         printf("%s \n", strerror(errno));
     }
+}
+
+void getPermissionsString(__mode_t mode, char* permissions) {
+    strcpy(permissions, "----------");
+
+    if (S_ISDIR(mode))
+        permissions[0] = 'd';
+    else if (S_ISLNK(mode))
+        permissions[0] = 'l';
+
+    if (S_IRUSR & mode)
+        permissions[1] = 'r';
+    if (S_IWUSR & mode)
+        permissions[2] = 'w';
+    if (S_IXUSR & mode)
+        permissions[3] = 'x';
+    if (S_IRGRP & mode)
+        permissions[4] = 'r';
+    if (S_IWGRP & mode)
+        permissions[5] = 'w';
+    if (S_IXGRP & mode)
+        permissions[6] = 'x';
+    if (S_IROTH & mode)
+        permissions[7] = 'r';
+    if (S_IWOTH & mode)
+        permissions[8] = 'w';
+    if (S_IXOTH & mode)
+        permissions[9] = 'x';
+}
+
+void getDateString(char* s, size_t size, time_t time) {
+    strftime(s, size, "%b %e %H:%M", localtime(&time));
 }
 // =================================================================== eof ==
 
