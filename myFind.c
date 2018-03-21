@@ -22,7 +22,6 @@
 #include <pwd.h>
 #include <grp.h>
 #include <time.h>
-
 // --------------------------------------------------------------- defines --
 
 // -------------------------------------------------------------- typedefs --
@@ -71,6 +70,7 @@ void getPermissionsString(__mode_t mode, char* permissions);
 void getDateString(char* s, size_t size, time_t time);
 
 
+int getDigitsCountFromInt(int i);
 
 /**
  * \brief Exemplarische Funktion
@@ -219,11 +219,6 @@ void do_dir(const char* dir_name, const char* const* parms) {
 void do_file(const char* file_name, const char* const* parms) {
     struct stat buf;
     int i = 0;
-    int posixly_correct_divisor = 2;
-    char permissions[11];
-    struct group* grp;
-    struct passwd* pwd;
-    char dateString[13];
 
     int retWert = lstat(file_name, &buf);
     if (retWert == 0) {
@@ -231,6 +226,12 @@ void do_file(const char* file_name, const char* const* parms) {
             if (strcmp(parms[i], "-print") == 0)
                 printf("%s\n", file_name);
             else if (strcmp(parms[i], "-ls") == 0) {
+                int posixly_correct_divisor = 2;
+                char permissions[11];
+                char dateString[13];
+                struct group* grp;
+                struct passwd* pwd;
+
                 if (getenv("POSIXLY_CORRECT"))
                     posixly_correct_divisor = 1;
 
@@ -241,10 +242,15 @@ void do_file(const char* file_name, const char* const* parms) {
 
                 printf("%9lu %7li %10s %3lu %8s %8s %10li %s %s\n", buf.st_ino, buf.st_blocks / posixly_correct_divisor,
                        permissions, buf.st_nlink, pwd->pw_name, grp->gr_name, buf.st_size, dateString, file_name);
-            } else if (strcmp(parms[i], "-name") == 0) {
-                if (strcmp(getpwuid(buf.st_uid)->pw_name, parms[i + 1]) != 0)
+            } else if (strcmp(parms[i], "-user") == 0) {
+                char uidString[getDigitsCountFromInt(buf.st_uid) + 1];
+                snprintf(uidString, sizeof(uidString), "%d", buf.st_uid);
+
+                if ((strcmp(getpwuid(buf.st_uid)->pw_name, parms[i + 1]) == 0) ||
+                    (strcmp(uidString, parms[i + 1]) == 0))
+                    i++;
+                else
                     break;
-                i++;
             } else if (strcmp(parms[i], "-type") == 0) {
                 if ((strcmp("b", parms[i + 1]) == 0 && S_ISBLK(buf.st_mode)) ||
                     (strcmp("c", parms[i + 1]) == 0 && S_ISCHR(buf.st_mode)) ||
@@ -252,10 +258,17 @@ void do_file(const char* file_name, const char* const* parms) {
                     (strcmp("p", parms[i + 1]) == 0 && S_ISFIFO(buf.st_mode)) ||
                     (strcmp("f", parms[i + 1]) == 0 && S_ISREG(buf.st_mode)) ||
                     (strcmp("l", parms[i + 1]) == 0 && S_ISLNK(buf.st_mode)) ||
-                    (strcmp("s", parms[i + 1]) == 0 && S_ISSOCK(buf.st_mode))) {
+                    (strcmp("s", parms[i + 1]) == 0 && S_ISSOCK(buf.st_mode)))
                     i++;
-                    continue;
-                } else
+                else
+                    break;
+            } else if (strcmp(parms[i], "-name") == 0) { //TODO: This works, but it's ugly. Rework after relative paths?
+                char* start = NULL;
+                start = strrchr(file_name, '/');
+
+                if (strcmp(parms[i + 1], start + 1) == 0)
+                    i++;
+                else
                     break;
             }
             i++;
@@ -300,6 +313,19 @@ void getPermissionsString(__mode_t mode, char* permissions) {
 
 void getDateString(char* s, size_t size, time_t time) {
     strftime(s, size, "%b %e %H:%M", localtime(&time));
+}
+/* negative numbers get treated the same as positive ones. The sign is not counted */
+int getDigitsCountFromInt(int i) {
+    int n = 0;
+
+    if (i == 0)
+        return 1;
+
+    while (i) {
+        i /= 10;
+        n++;
+    }
+    return n;
 }
 // =================================================================== eof ==
 
