@@ -22,6 +22,7 @@
 #include <pwd.h>
 #include <grp.h>
 #include <time.h>
+#include <libgen.h>
 // --------------------------------------------------------------- defines --
 
 // -------------------------------------------------------------- typedefs --
@@ -55,15 +56,13 @@ void do_dir(const char* dir_name, const char* const* parms);
  *     to the print function. If the file is a directory, do_dir is recursivly called.
  *
  *
- * \param	file_name   file to be checked by the function
+ * \param	file_path   file to be checked by the function
  * \param   parms       parameter array defining which files should be printed as output
  *
  * \return	      void
  *
  */
-void do_file(const char* file_name, const char* const* parms);
-
-char* get_cwd(void);
+void do_file(const char* file_path, const char* const* parms);
 
 void getPermissionsString(__mode_t mode, char* permissions);
 
@@ -162,8 +161,14 @@ int main(int argc, char* argv[]) {
     //add -print if no other output action was defined
     if (!is_output_set) parms[index - 2] = "-print";
     //call do_file
-    if (iRc == EXIT_SUCCESS)
-        do_file(path, parms);
+    if (iRc == EXIT_SUCCESS) {
+        char* tempPath = strdup(path);
+        if (chdir(dirname(tempPath)) == 0)
+            do_file(path, parms);
+        else
+            printf("myFind: '%s': %s \n", path, strerror(errno));
+        free(tempPath);
+    }
 
     if (path)
         free(path);
@@ -171,27 +176,12 @@ int main(int argc, char* argv[]) {
     return iRc;
 }
 
-//get current working directory
-char* get_cwd(void) {
-    unsigned int size = 100;
-
-    while (1) {
-        char* buffer = (char*) malloc(size);
-        if (getcwd(buffer, size) == buffer)
-            return buffer;
-        free(buffer);
-        //if (errno != ERANGE)
-        //return 0;
-        size *= 2;
-    }
-}
-
 void do_dir(const char* dir_name, const char* const* parms) {
     DIR* directory = opendir(dir_name);
     struct dirent* entry;
     char* temp;
 
-    if (directory) {
+    if (directory && chdir(dir_name) == 0) {
         while ((entry = readdir(directory))) {
             if (strcmp(entry->d_name, "..") == 0 ||
                 strcmp(entry->d_name, ".") == 0)
@@ -209,22 +199,26 @@ void do_dir(const char* dir_name, const char* const* parms) {
                 free(temp);
             }
         }
-
         closedir(directory);
     } else {
         printf("myFind: '%s': %s \n", dir_name, strerror(errno));
     }
+
 }
 
-void do_file(const char* file_name, const char* const* parms) {
+void do_file(const char* file_path, const char* const* parms) {
     struct stat buf;
     int i = 0;
+    char* tempPath = NULL;
+    char* fileName = NULL;
 
-    int retWert = lstat(file_name, &buf);
+    tempPath = strdup(file_path);
+    fileName = basename(tempPath);
+    int retWert = lstat(fileName, &buf);
     if (retWert == 0) {
         while (parms[i]) {
             if (strcmp(parms[i], "-print") == 0)
-                printf("%s\n", file_name);
+                printf("%s\n", file_path);
             else if (strcmp(parms[i], "-ls") == 0) {
                 int posixly_correct_divisor = 2;
                 char permissions[11];
@@ -240,8 +234,8 @@ void do_file(const char* file_name, const char* const* parms) {
                 grp = getgrgid(buf.st_gid);
                 pwd = getpwuid(buf.st_uid);
 
-                printf("%9lu %7li %10s %3lu %8s %8s %10li %s %s\n", buf.st_ino, buf.st_blocks / posixly_correct_divisor,
-                       permissions, buf.st_nlink, pwd->pw_name, grp->gr_name, buf.st_size, dateString, file_name);
+                printf("%9lu %7li %10s %3u %8s %8s %10li %s %s\n", buf.st_ino, buf.st_blocks / posixly_correct_divisor,
+                       permissions, buf.st_nlink, pwd->pw_name, grp->gr_name, buf.st_size, dateString, file_path);
             } else if (strcmp(parms[i], "-user") == 0) {
                 char uidString[getDigitsCountFromInt(buf.st_uid) + 1];
                 snprintf(uidString, sizeof(uidString), "%d", buf.st_uid);
@@ -262,11 +256,8 @@ void do_file(const char* file_name, const char* const* parms) {
                     i++;
                 else
                     break;
-            } else if (strcmp(parms[i], "-name") == 0) { //TODO: This works, but it's ugly. Rework after relative paths?
-                char* start = NULL;
-                start = strrchr(file_name, '/');
-
-                if (strcmp(parms[i + 1], start + 1) == 0)
+            } else if (strcmp(parms[i], "-name") == 0) {
+                if (strcmp(parms[i + 1], fileName) == 0)
                     i++;
                 else
                     break;
@@ -276,11 +267,13 @@ void do_file(const char* file_name, const char* const* parms) {
 
 
         if (S_ISDIR(buf.st_mode)) {
-            do_dir(file_name, parms);
+            do_dir(file_path, parms);
         }
     } else {
         printf("%s \n", strerror(errno));
     }
+
+    free(tempPath);
 }
 
 void getPermissionsString(__mode_t mode, char* permissions) {
