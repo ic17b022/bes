@@ -165,8 +165,11 @@ int main(int argc, char* argv[]) {
         char* tempPath = strdup(path);
         if (chdir(dirname(tempPath)) == 0)
             do_file(path, parms);
-        else
+        else {
             printf("myFind: '%s': %s \n", path, strerror(errno));
+            iRc = EXIT_FAILURE;
+        }
+
         free(tempPath);
     }
 
@@ -177,26 +180,40 @@ int main(int argc, char* argv[]) {
 }
 
 void do_dir(const char* dir_name, const char* const* parms) {
-    DIR* directory = opendir(dir_name);
+    DIR* directory = NULL;
     struct dirent* entry;
-    char* temp;
+    int arrSize = 10;
+    int arrIndex = 0;
+    char* tempPath = NULL;
+    char* dirName = NULL;
+    char** dir_array = malloc(sizeof(char*) * arrSize);  //TODO: and if not?
 
-    if (directory && chdir(dir_name) == 0) {
+    tempPath = strdup(dir_name);
+    dirName = basename(tempPath);
+    directory = opendir(dirName);
+
+    if (directory && chdir(dirName) == 0) {
         while ((entry = readdir(directory))) {
             if (strcmp(entry->d_name, "..") == 0 ||
                 strcmp(entry->d_name, ".") == 0)
                 continue;
-            temp = malloc(strlen(dir_name) + strlen(entry->d_name) + 2);  // +1 for '/', +1 for '\n'
-            if (temp) {
-                temp[0] = '\0';
 
-                strcat(temp, dir_name);
-                strcat(temp, "/");
-                strcat(temp, entry->d_name);
+            if (arrIndex == arrSize) {
+                arrSize *= 2;
+                dir_array = realloc(dir_array, sizeof(char*) * arrSize); //TODO: and if not?
+            }
 
-                do_file(temp, parms);
 
-                free(temp);
+            dir_array[arrIndex] = malloc(strlen(dir_name) + strlen(entry->d_name) + 2);  // +1 for '/', +1 for '\0'
+            if (dir_array[arrIndex]) {     //TODO: and if not?
+                dir_array[arrIndex][0] = '\0';
+
+                strcat(dir_array[arrIndex], dir_name);
+                strcat(dir_array[arrIndex], "/");
+                strcat(dir_array[arrIndex], entry->d_name);
+
+                //do_file(temp, parms);
+                arrIndex++;
             }
         }
         closedir(directory);
@@ -204,6 +221,15 @@ void do_dir(const char* dir_name, const char* const* parms) {
         printf("myFind: '%s': %s \n", dir_name, strerror(errno));
     }
 
+    for (int i = 0; i < arrIndex; i++) {
+        do_file(dir_array[i], parms);
+        free(dir_array[i]);
+    }
+
+    free(dir_array);
+
+    if (chdir("..") != 0)
+        printf("myFind: '%s': %s \n", dir_name, strerror(errno));
 }
 
 void do_file(const char* file_path, const char* const* parms) {
@@ -234,8 +260,9 @@ void do_file(const char* file_path, const char* const* parms) {
                 grp = getgrgid(buf.st_gid);
                 pwd = getpwuid(buf.st_uid);
 
-                printf("%9lu %7li %10s %3u %8s %8s %10li %s %s\n", buf.st_ino, buf.st_blocks / posixly_correct_divisor,
-                       permissions, buf.st_nlink, pwd->pw_name, grp->gr_name, buf.st_size, dateString, file_path);
+                printf("%9lu %7li %10s %3lu %8s %8s %10li %s %s\n", buf.st_ino, buf.st_blocks / posixly_correct_divisor,
+                       permissions, (unsigned long) buf.st_nlink, pwd->pw_name, grp->gr_name, buf.st_size, dateString,
+                       file_path); //size of __nlink_t is plattform dependent. Cast to long int should be safe.
             } else if (strcmp(parms[i], "-user") == 0) {
                 char uidString[getDigitsCountFromInt(buf.st_uid) + 1];
                 snprintf(uidString, sizeof(uidString), "%d", buf.st_uid);
@@ -283,6 +310,12 @@ void getPermissionsString(__mode_t mode, char* permissions) {
         permissions[0] = 'd';
     else if (S_ISLNK(mode))
         permissions[0] = 'l';
+    else if (S_ISFIFO(mode))
+        permissions[0] = 'p';
+    else if (S_ISCHR(mode))
+        permissions[0] = 'c';
+    else if (S_ISBLK(mode))
+        permissions[0] = 'b';
 
     if (S_IRUSR & mode)
         permissions[1] = 'r';
@@ -307,6 +340,7 @@ void getPermissionsString(__mode_t mode, char* permissions) {
 void getDateString(char* s, size_t size, time_t time) {
     strftime(s, size, "%b %e %H:%M", localtime(&time));
 }
+
 /* negative numbers get treated the same as positive ones. The sign is not counted */
 int getDigitsCountFromInt(int i) {
     int n = 0;
