@@ -129,7 +129,8 @@ int main(int argc, char* argv[]) {
                     iRc = EXIT_FAILURE;
                 }
             }
-            if (strcmp(argv[index], "-type") == 0) {
+            if (strcmp(argv[index], "-type") ==
+                0) {        //TODO: richtige usage ausgeben ist gut, nicht überprüfen ob die auch eingehalten wird nicht :P
                 if (argv[index + 1] != NULL) {
                     parms[index - 2] = argv[index];
                     parms[index - 1] = argv[index + 1];
@@ -164,7 +165,7 @@ int main(int argc, char* argv[]) {
     if (iRc == EXIT_SUCCESS) {
         char* tempPath = strdup(path);
         if (chdir(dirname(tempPath)) == 0)
-            do_file(path, parms);
+            do_file(path, parms);       //TODO: path darf kein trailing / haben
         else {
             printf("myFind: '%s': %s \n", path, strerror(errno));
             iRc = EXIT_FAILURE;
@@ -226,6 +227,7 @@ void do_dir(const char* dir_name, const char* const* parms) {
         free(dir_array[i]);
     }
 
+    free(tempPath);
     free(dir_array);
 
     if (chdir("..") != 0)
@@ -240,8 +242,7 @@ void do_file(const char* file_path, const char* const* parms) {
 
     tempPath = strdup(file_path);
     fileName = basename(tempPath);
-    int retWert = lstat(fileName, &buf);
-    if (retWert == 0) {
+    if (lstat(fileName, &buf) == 0) {
         while (parms[i]) {
             if (strcmp(parms[i], "-print") == 0)
                 printf("%s\n", file_path);
@@ -257,12 +258,30 @@ void do_file(const char* file_path, const char* const* parms) {
 
                 getPermissionsString(buf.st_mode, permissions);
                 getDateString(dateString, sizeof(dateString), buf.st_mtim.tv_sec);
-                grp = getgrgid(buf.st_gid);
                 pwd = getpwuid(buf.st_uid);
+                grp = getgrgid(buf.st_gid);
 
-                printf("%9lu %7li %10s %3lu %8s %8s %10li %s %s\n", buf.st_ino, buf.st_blocks / posixly_correct_divisor,
+                if (pwd && grp)
+                    printf("%9lu %7li %10s %3lu %8s %8s %10li %s %s\n", buf.st_ino,
+                           buf.st_blocks / posixly_correct_divisor,
                        permissions, (unsigned long) buf.st_nlink, pwd->pw_name, grp->gr_name, buf.st_size, dateString,
                        file_path); //size of __nlink_t is plattform dependent. Cast to long int should be safe.
+                else if (!pwd && !grp)
+                    printf("%9lu %7li %10s %3lu %u %u %10li %s %s\n", buf.st_ino,
+                           buf.st_blocks / posixly_correct_divisor,
+                           permissions, (unsigned long) buf.st_nlink, buf.st_uid, buf.st_gid, buf.st_size, dateString,
+                           file_path); //size of __nlink_t is plattform dependent. Cast to long int should be safe.
+                else if (!pwd)
+                    printf("%9lu %7li %10s %3lu %u %8s %10li %s %s\n", buf.st_ino,
+                           buf.st_blocks / posixly_correct_divisor,
+                           permissions, (unsigned long) buf.st_nlink, buf.st_uid, grp->gr_name, buf.st_size, dateString,
+                           file_path); //size of __nlink_t is plattform dependent. Cast to long int should be safe.
+                else
+                    printf("%9lu %7li %10s %3lu %8s %u %10li %s %s\n", buf.st_ino,
+                           buf.st_blocks / posixly_correct_divisor,
+                           permissions, (unsigned long) buf.st_nlink, pwd->pw_name, buf.st_gid, buf.st_size, dateString,
+                           file_path); //size of __nlink_t is plattform dependent. Cast to long int should be safe.
+
             } else if (strcmp(parms[i], "-user") == 0) {
                 char uidString[getDigitsCountFromInt(buf.st_uid) + 1];
                 snprintf(uidString, sizeof(uidString), "%d", buf.st_uid);
