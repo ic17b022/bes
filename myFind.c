@@ -45,7 +45,7 @@
  * \return	      void
  *
  */
-void do_dir(const char* dir_name, const char* const* parms);
+int do_dir(const char* dir_name, const char* const* parms);
 
 
 /**
@@ -62,7 +62,7 @@ void do_dir(const char* dir_name, const char* const* parms);
  * \return	      void
  *
  */
-void do_file(const char* file_path, const char* const* parms);
+int do_file(const char* file_path, const char* const* parms);
 
 void getPermissionsString(__mode_t mode, char* permissions);
 
@@ -129,15 +129,14 @@ int main(int argc, char* argv[]) {
                     iRc = EXIT_FAILURE;
                 }
             }
-            if (strcmp(argv[index], "-type") ==
-                0) {        //TODO: richtige usage ausgeben ist gut, nicht überprüfen ob die auch eingehalten wird nicht :P
+            if (strcmp(argv[index], "-type") == 0) {
                 if (argv[index + 1] != NULL) {
                     parms[index - 2] = argv[index];
                     parms[index - 1] = argv[index + 1];
                     index = index + 2;
                     continue;
                 } else {
-                    printf("Ivalid arguments\nCorrect usage: -type [bcdpfls]\n");
+                    printf("Ivalid arguments\nCorrect usage: -type [bcdpfls]\n"); //TODO: hier auch gleich auf diese Typen einschränken
                     iRc = EXIT_FAILURE;
                 }
             }
@@ -165,7 +164,8 @@ int main(int argc, char* argv[]) {
     if (iRc == EXIT_SUCCESS) {
         char* tempPath = strdup(path);
         if (chdir(dirname(tempPath)) == 0)
-            do_file(path, parms);       //TODO: path darf kein trailing / haben
+            iRc = do_file(path,
+                          parms);       //TODO: path darf kein trailing / haben. // Nachdem das script ohne / testet -> optional?
         else {
             printf("myFind: '%s': %s \n", path, strerror(errno));
             iRc = EXIT_FAILURE;
@@ -180,7 +180,8 @@ int main(int argc, char* argv[]) {
     return iRc;
 }
 
-void do_dir(const char* dir_name, const char* const* parms) {
+int do_dir(const char* dir_name, const char* const* parms) {
+    int iRc = EXIT_SUCCESS;
     DIR* directory = NULL;
     struct dirent* entry;
     int arrSize = 10;
@@ -219,22 +220,29 @@ void do_dir(const char* dir_name, const char* const* parms) {
         }
         closedir(directory);
     } else {
+        iRc = EXIT_FAILURE;
         printf("myFind: '%s': %s \n", dir_name, strerror(errno));
     }
 
-    for (int i = 0; i < arrIndex; i++) {
-        do_file(dir_array[i], parms);
+    for (int i = 0; i < arrIndex && iRc == EXIT_SUCCESS; i++) {
+        iRc = do_file(dir_array[i], parms);
         free(dir_array[i]);
     }
 
     free(tempPath);
     free(dir_array);
 
-    if (chdir("..") != 0)
+    if (chdir("..") != 0) {
+        iRc = EXIT_FAILURE;
         printf("myFind: '%s': %s \n", dir_name, strerror(errno));
+    }
+
+
+    return iRc;
 }
 
-void do_file(const char* file_path, const char* const* parms) {
+int do_file(const char* file_path, const char* const* parms) {
+    int iRc = EXIT_SUCCESS;
     struct stat buf;
     int i = 0;
     char* tempPath = NULL;
@@ -263,34 +271,41 @@ void do_file(const char* file_path, const char* const* parms) {
 
                 if (pwd && grp)
                     printf("%9lu %7li %10s %3lu %8s %8s %10li %s %s\n", buf.st_ino,
-                           buf.st_blocks / posixly_correct_divisor,
-                       permissions, (unsigned long) buf.st_nlink, pwd->pw_name, grp->gr_name, buf.st_size, dateString,
-                       file_path); //size of __nlink_t is plattform dependent. Cast to long int should be safe.
+                           buf.st_blocks / posixly_correct_divisor, permissions, (unsigned long) buf.st_nlink,
+                           pwd->pw_name, grp->gr_name, buf.st_size, dateString,
+                           file_path); //size of __nlink_t is plattform dependent. Cast to long int should be safe.
                 else if (!pwd && !grp)
                     printf("%9lu %7li %10s %3lu %u %u %10li %s %s\n", buf.st_ino,
-                           buf.st_blocks / posixly_correct_divisor,
-                           permissions, (unsigned long) buf.st_nlink, buf.st_uid, buf.st_gid, buf.st_size, dateString,
+                           buf.st_blocks / posixly_correct_divisor, permissions, (unsigned long) buf.st_nlink,
+                           buf.st_uid, buf.st_gid, buf.st_size, dateString,
                            file_path); //size of __nlink_t is plattform dependent. Cast to long int should be safe.
                 else if (!pwd)
                     printf("%9lu %7li %10s %3lu %u %8s %10li %s %s\n", buf.st_ino,
-                           buf.st_blocks / posixly_correct_divisor,
-                           permissions, (unsigned long) buf.st_nlink, buf.st_uid, grp->gr_name, buf.st_size, dateString,
+                           buf.st_blocks / posixly_correct_divisor, permissions, (unsigned long) buf.st_nlink,
+                           buf.st_uid, grp->gr_name, buf.st_size, dateString,
                            file_path); //size of __nlink_t is plattform dependent. Cast to long int should be safe.
                 else
                     printf("%9lu %7li %10s %3lu %8s %u %10li %s %s\n", buf.st_ino,
-                           buf.st_blocks / posixly_correct_divisor,
-                           permissions, (unsigned long) buf.st_nlink, pwd->pw_name, buf.st_gid, buf.st_size, dateString,
+                           buf.st_blocks / posixly_correct_divisor, permissions, (unsigned long) buf.st_nlink,
+                           pwd->pw_name, buf.st_gid, buf.st_size, dateString,
                            file_path); //size of __nlink_t is plattform dependent. Cast to long int should be safe.
 
             } else if (strcmp(parms[i], "-user") == 0) {
-                char uidString[getDigitsCountFromInt(buf.st_uid) + 1];
-                snprintf(uidString, sizeof(uidString), "%d", buf.st_uid);
+                struct passwd* pwd_name = NULL;
+                struct passwd* pwd_uid = NULL;
+                char* end = NULL;
+                pwd_name = getpwnam(parms[i + 1]);
+                pwd_uid = getpwuid((uint) strtol(parms[i + 1], &end, 10));
 
-                if ((strcmp(getpwuid(buf.st_uid)->pw_name, parms[i + 1]) == 0) ||
-                    (strcmp(uidString, parms[i + 1]) == 0))
+                if (!pwd_name && !pwd_uid) {
+                    iRc = EXIT_FAILURE;
+                    printf("myFind: '%s': %s \n", parms[i + 1], "user not found");
+                } else if ((pwd_name && (pwd_name->pw_uid == buf.st_uid)) ||
+                           (pwd_uid && *end == '\0' && (pwd_uid->pw_uid == buf.st_uid)))
                     i++;
                 else
                     break;
+
             } else if (strcmp(parms[i], "-type") == 0) {
                 if ((strcmp("b", parms[i + 1]) == 0 && S_ISBLK(buf.st_mode)) ||
                     (strcmp("c", parms[i + 1]) == 0 && S_ISCHR(buf.st_mode)) ||
@@ -300,8 +315,11 @@ void do_file(const char* file_path, const char* const* parms) {
                     (strcmp("l", parms[i + 1]) == 0 && S_ISLNK(buf.st_mode)) ||
                     (strcmp("s", parms[i + 1]) == 0 && S_ISSOCK(buf.st_mode)))
                     i++;
-                else
+                else {
+                    iRc = EXIT_FAILURE;
                     break;
+                }
+
             } else if (strcmp(parms[i], "-name") == 0) {
                 if (strcmp(parms[i + 1], fileName) == 0)
                     i++;
@@ -312,14 +330,17 @@ void do_file(const char* file_path, const char* const* parms) {
         }
 
 
-        if (S_ISDIR(buf.st_mode)) {
-            do_dir(file_path, parms);
+        if (S_ISDIR(buf.st_mode) && iRc == EXIT_SUCCESS) {
+            iRc = do_dir(file_path, parms);
         }
     } else {
+        iRc = EXIT_FAILURE;
         printf("%s \n", strerror(errno));
     }
 
     free(tempPath);
+
+    return iRc;
 }
 
 void getPermissionsString(__mode_t mode, char* permissions) {
