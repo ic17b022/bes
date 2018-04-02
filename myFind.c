@@ -291,21 +291,28 @@ int do_file(const char* file_path, const char* const* parms) {
                            file_path); //size of __nlink_t is plattform dependent. Cast to long int should be safe.
 
             } else if (strcmp(parms[i], "-user") == 0) {
-                struct passwd* pwd_name = NULL;
-                struct passwd* pwd_uid = NULL;
-                char* end = NULL;
-                pwd_name = getpwnam(parms[i + 1]);
-                pwd_uid = getpwuid((uint) strtol(parms[i + 1], &end, 10));
+                struct passwd* pwd = NULL;
+                pwd = getpwnam(parms[i + 1]);
 
-                if (!pwd_name && !pwd_uid) {
-                    iRc = EXIT_FAILURE;
-                    printf("myFind: '%s': %s \n", parms[i + 1], "user not found");
-                } else if ((pwd_name && (pwd_name->pw_uid == buf.st_uid)) ||
-                           (pwd_uid && *end == '\0' && (pwd_uid->pw_uid == buf.st_uid)))
-                    i++;
-                else
-                    break;
-
+                if (pwd) {
+                    if (pwd->pw_uid == buf.st_uid)
+                        i++;
+                    else
+                        break;
+                } else {
+                    char* end = NULL;
+                    pwd = getpwuid((uint) strtol(parms[i + 1], &end, 10));
+                    if (*end == '\0' && pwd != NULL) {
+                        if (pwd->pw_uid == buf.st_uid)
+                            i++;
+                        else
+                            break;
+                    } else {
+                        iRc = EXIT_FAILURE;
+                        fprintf(stderr, "myFind: '%s' is not the name of a known user \n", parms[i + 1]);
+                        break;
+                    }
+                }
             } else if (strcmp(parms[i], "-type") == 0) {
                 if ((strcmp("b", parms[i + 1]) == 0 && S_ISBLK(buf.st_mode)) ||
                     (strcmp("c", parms[i + 1]) == 0 && S_ISCHR(buf.st_mode)) ||
@@ -317,6 +324,7 @@ int do_file(const char* file_path, const char* const* parms) {
                     i++;
                 else {
                     iRc = EXIT_FAILURE;
+                    printf("type nix gut");
                     break;
                 }
 
@@ -335,7 +343,7 @@ int do_file(const char* file_path, const char* const* parms) {
         }
     } else {
         iRc = EXIT_FAILURE;
-        printf("%s \n", strerror(errno));
+        printf("myFind: %s \n", strerror(errno));
     }
 
     free(tempPath);
