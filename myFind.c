@@ -74,6 +74,9 @@ int main(int argc, char* argv[]) {
     if (iRc == EXIT_SUCCESS) {
         path = malloc(strlen(argv[index]) + 1);
         strcpy(path, argv[index]);
+        if(path[strlen(path)-1]=='/') {
+                path[strlen(path)-1]='\0';
+        }
         index++;
 
         //index=2;
