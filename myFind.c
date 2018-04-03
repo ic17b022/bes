@@ -32,37 +32,8 @@
 
 // ------------------------------------------------------------- functions --
 
-
-/**
- * \brief Iterates over all Files in a directory and passes each file to the do-dir function.
- *
- *     This function uses the opendir system call to open a directory and then readdir to pass each file
- *     into the do_file function.
- *
- *
- * \param	dir_name    directory to be opened by the function
- * \param   parms       parameter array defining which files should be printed as output
- *
- * \return	      void
- *
- */
 int do_dir(const char* dir_name, const char* const* parms);
 
-
-/**
- * \brief Gets single file from do_dir and decides if file should be output or recursively calls do_dir in case
- *          the file is a directory.
- *
- *     This function uses the lstat system call do gather information about the file. The information is passed
- *     to the print function. If the file is a directory, do_dir is recursivly called.
- *
- *
- * \param	file_path   file to be checked by the function
- * \param   parms       parameter array defining which files should be printed as output
- *
- * \return	      void
- *
- */
 int do_file(const char* file_path, const char* const* parms);
 
 void getPermissionsString(__mode_t mode, char* permissions);
@@ -73,7 +44,7 @@ void getDateString(char* s, size_t size, time_t time);
 int getDigitsCountFromInt(int i);
 
 /**
- * \brief Exemplarische Funktion
+ * \brief
  *
  *     Diese Funktion gibt den übergebenen Parameter
  *     auf der Konsole aus.
@@ -131,13 +102,20 @@ int main(int argc, char* argv[]) {
                 }
             }
             if (strcmp(argv[index], "-type") == 0) {
-                if (argv[index + 1] != NULL) {
+                if (argv[index + 1] != NULL && (strcmp(argv[index + 1],"b")==0 ||
+                                                strcmp(argv[index + 1],"c")==0 ||
+                                                strcmp(argv[index + 1],"d")==0 ||
+                                                strcmp(argv[index + 1],"p")==0 ||
+                                                strcmp(argv[index + 1],"f")==0 ||
+                                                strcmp(argv[index + 1],"l")==0 ||
+                                                strcmp(argv[index + 1],"s")==0))
+                {
                     parms[index - 2] = argv[index];
                     parms[index - 1] = argv[index + 1];
                     index = index + 2;
                     continue;
                 } else {
-                    printf("Ivalid arguments\nCorrect usage: -type [bcdpfls]\n"); //TODO: hier auch gleich auf diese Typen einschränken
+                    printf("Ivalid arguments\nCorrect usage: -type [bcdpfls]\n");
                     iRc = EXIT_FAILURE;
                 }
             }
@@ -181,6 +159,19 @@ int main(int argc, char* argv[]) {
     return iRc;
 }
 
+/**
+ * \brief Iterates over all Files in a directory and passes each file to the do-file function.
+ *
+ *     This function uses the opendir system call to open a directory and then readdir to pass each file
+ *     into the do_file function.
+ *
+ *
+ * \param	dir_name    directory to be opened by the function
+ * \param   parms       parameter array defining which files should be printed as output
+ *
+ * \return	      void
+ *
+ */
 int do_dir(const char* dir_name, const char* const* parms) {
     int iRc = EXIT_SUCCESS;
     DIR* directory = NULL;
@@ -242,6 +233,20 @@ int do_dir(const char* dir_name, const char* const* parms) {
     return iRc;
 }
 
+/**
+ * \brief Gets single file from do_dir and decides if file should be output or recursively calls do_dir in case
+ *          the file is a directory.
+ *
+ *     This function uses the lstat system call do gather information about the file. The information is passed
+ *     to the print function. If the file is a directory, do_dir is recursivly called.
+ *
+ *
+ * \param	file_path   file to be checked by the function
+ * \param   parms       parameter array defining which files should be printed as output
+ *
+ * \return	      void
+ *
+ */
 int do_file(const char* file_path, const char* const* parms) {
     int iRc = EXIT_SUCCESS;
     struct stat buf;
@@ -349,7 +354,18 @@ int do_file(const char* file_path, const char* const* parms) {
 
     return iRc;
 }
-
+/**
+ * \brief Checks permisson of a file and returns them in a permission string
+ *
+ *      File permissions are passed to the function, are checked and put into
+ *
+ *
+ * \param	mode              mode?
+ * \param   permissions       pointer to a permission string that is filled in the funciton
+ *
+ * \return	      void
+ *
+ */
 void getPermissionsString(__mode_t mode, char* permissions) {
     strcpy(permissions, "----------");
 
