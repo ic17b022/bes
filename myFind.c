@@ -23,6 +23,7 @@
 #include <grp.h>
 #include <time.h>
 #include <libgen.h>
+#include <fnmatch.h>
 // --------------------------------------------------------------- defines --
 
 // -------------------------------------------------------------- typedefs --
@@ -329,7 +330,7 @@ int do_file(const char* file_path, const char* const* parms) {
                 }
 
             } else if (strcmp(parms[i], "-name") == 0) {
-                if (strcmp(parms[i + 1], fileName) == 0)
+                if (fnmatch(parms[i + 1], fileName, FNM_PATHNAME) == 0)
                     i++;
                 else
                     break;
