@@ -324,13 +324,11 @@ int do_file(const char* file_path, const char* const* parms) {
                     (strcmp("s", parms[i + 1]) == 0 && S_ISSOCK(buf.st_mode)))
                     i++;
                 else {
-                    iRc = EXIT_FAILURE;
-                    printf("type nix gut");
                     break;
                 }
 
             } else if (strcmp(parms[i], "-name") == 0) {
-                if (fnmatch(parms[i + 1], fileName, FNM_PATHNAME) == 0)
+                if (fnmatch(parms[i + 1], fileName, FNM_NOESCAPE) == 0)
                     i++;
                 else
                     break;
