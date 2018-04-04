@@ -24,6 +24,7 @@
 #include <time.h>
 #include <libgen.h>
 #include <fnmatch.h>
+#include <stdbool.h>
 // --------------------------------------------------------------- defines --
 
 // -------------------------------------------------------------- typedefs --
@@ -32,9 +33,9 @@
 
 // ------------------------------------------------------------- functions --
 
-int do_dir(const char* dir_name, const char* const* parms);
+bool do_dir(const char* dir_name, const char* const* parms);
 
-int do_file(const char* file_path, const char* const* parms);
+bool do_file(const char* file_path, const char* const* parms);
 
 void getPermissionsString(__mode_t mode, char* permissions);
 
@@ -145,9 +146,12 @@ int main(int argc, char* argv[]) {
     //call do_file
     if (iRc == EXIT_SUCCESS) {
         char* tempPath = strdup(path);
-        if (chdir(dirname(tempPath)) == 0)
-            iRc = do_file(path,
-                          parms);       //TODO: path darf kein trailing / haben. // Nachdem das script ohne / testet -> optional?
+        if (chdir(dirname(tempPath)) ==
+            0) {//TODO: path darf kein trailing / haben. // Nachdem das script ohne / testet -> optional?
+            if (!do_file(path, parms)) {
+                iRc = EXIT_FAILURE;
+            }
+        }
         else {
             printf("myFind: '%s': %s \n", path, strerror(errno));
             iRc = EXIT_FAILURE;
@@ -175,8 +179,8 @@ int main(int argc, char* argv[]) {
  * \return	      void
  *
  */
-int do_dir(const char* dir_name, const char* const* parms) {
-    int iRc = EXIT_SUCCESS;
+bool do_dir(const char* dir_name, const char* const* parms) {
+    bool rc = true;
     DIR* directory = NULL;
     struct dirent* entry;
     int arrSize = 10;
@@ -215,12 +219,12 @@ int do_dir(const char* dir_name, const char* const* parms) {
         }
         closedir(directory);
     } else {
-        iRc = EXIT_FAILURE;
+        rc = false;
         printf("myFind: '%s': %s \n", dir_name, strerror(errno));
     }
 
-    for (int i = 0; i < arrIndex && iRc == EXIT_SUCCESS; i++) {
-        iRc = do_file(dir_array[i], parms);
+    for (int i = 0; i < arrIndex && rc == true; i++) {
+        rc = do_file(dir_array[i], parms);
         free(dir_array[i]);
     }
 
@@ -228,12 +232,12 @@ int do_dir(const char* dir_name, const char* const* parms) {
     free(dir_array);
 
     if (chdir("..") != 0) {
-        iRc = EXIT_FAILURE;
+        rc = false;
         printf("myFind: '%s': %s \n", dir_name, strerror(errno));
     }
 
 
-    return iRc;
+    return rc;
 }
 
 /**
@@ -250,8 +254,8 @@ int do_dir(const char* dir_name, const char* const* parms) {
  * \return	      void
  *
  */
-int do_file(const char* file_path, const char* const* parms) {
-    int iRc = EXIT_SUCCESS;
+bool do_file(const char* file_path, const char* const* parms) {
+    bool rc = true;
     struct stat buf;
     int i = 0;
     char* tempPath = NULL;
@@ -317,7 +321,7 @@ int do_file(const char* file_path, const char* const* parms) {
                         else
                             break;
                     } else {
-                        iRc = EXIT_FAILURE;
+                        rc = false;
                         fprintf(stderr, "myFind: '%s' is not the name of a known user \n", parms[i + 1]);
                         break;
                     }
@@ -345,17 +349,17 @@ int do_file(const char* file_path, const char* const* parms) {
         }
 
 
-        if (S_ISDIR(buf.st_mode) && iRc == EXIT_SUCCESS) {
-            iRc = do_dir(file_path, parms);
+        if (S_ISDIR(buf.st_mode) && rc == true) {
+            rc = do_dir(file_path, parms);
         }
     } else {
-        iRc = EXIT_FAILURE;
+        rc = EXIT_FAILURE;
         printf("myFind: %s \n", strerror(errno));
     }
 
     free(tempPath);
 
-    return iRc;
+    return rc;
 }
 /**
  * \brief Checks permisson of a file and returns them in a permission string
