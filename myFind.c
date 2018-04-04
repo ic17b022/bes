@@ -75,8 +75,8 @@ int main(int argc, char* argv[]) {
     if (iRc == EXIT_SUCCESS) {
         path = malloc(strlen(argv[index]) + 1);
         strcpy(path, argv[index]);
-        if(path[strlen(path)-1]=='/') {
-                path[strlen(path)-1]='\0';
+        if (path[strlen(path) - 1] == '/') {
+            path[strlen(path) - 1] = '\0';
         }
         index++;
 
@@ -106,14 +106,13 @@ int main(int argc, char* argv[]) {
                 }
             }
             if (strcmp(argv[index], "-type") == 0) {
-                if (argv[index + 1] != NULL && (strcmp(argv[index + 1],"b")==0 ||
-                                                strcmp(argv[index + 1],"c")==0 ||
-                                                strcmp(argv[index + 1],"d")==0 ||
-                                                strcmp(argv[index + 1],"p")==0 ||
-                                                strcmp(argv[index + 1],"f")==0 ||
-                                                strcmp(argv[index + 1],"l")==0 ||
-                                                strcmp(argv[index + 1],"s")==0))
-                {
+                if (argv[index + 1] != NULL && (strcmp(argv[index + 1], "b") == 0 ||
+                                                strcmp(argv[index + 1], "c") == 0 ||
+                                                strcmp(argv[index + 1], "d") == 0 ||
+                                                strcmp(argv[index + 1], "p") == 0 ||
+                                                strcmp(argv[index + 1], "f") == 0 ||
+                                                strcmp(argv[index + 1], "l") == 0 ||
+                                                strcmp(argv[index + 1], "s") == 0)) {
                     parms[index - 2] = argv[index];
                     parms[index - 1] = argv[index + 1];
                     index = index + 2;
@@ -151,8 +150,7 @@ int main(int argc, char* argv[]) {
             if (!do_file(path, parms)) {
                 iRc = EXIT_FAILURE;
             }
-        }
-        else {
+        } else {
             printf("myFind: '%s': %s \n", path, strerror(errno));
             iRc = EXIT_FAILURE;
         }
@@ -283,22 +281,22 @@ bool do_file(const char* file_path, const char* const* parms) {
                 grp = getgrgid(buf.st_gid);
 
                 if (pwd && grp)
-                    printf("%9lu %7li %10s %3lu %8s %8s %10li %s %s\n", buf.st_ino,
+                    printf("%lu %li %s %lu %s %s %li %s %s\n", buf.st_ino,
                            buf.st_blocks / posixly_correct_divisor, permissions, (unsigned long) buf.st_nlink,
                            pwd->pw_name, grp->gr_name, buf.st_size, dateString,
                            file_path); //size of __nlink_t is plattform dependent. Cast to long int should be safe.
                 else if (!pwd && !grp)
-                    printf("%9lu %7li %10s %3lu %u %u %10li %s %s\n", buf.st_ino,
+                    printf("%lu %li %s %lu %u %u %li %s %s\n", buf.st_ino,
                            buf.st_blocks / posixly_correct_divisor, permissions, (unsigned long) buf.st_nlink,
                            buf.st_uid, buf.st_gid, buf.st_size, dateString,
                            file_path); //size of __nlink_t is plattform dependent. Cast to long int should be safe.
                 else if (!pwd)
-                    printf("%9lu %7li %10s %3lu %u %8s %10li %s %s\n", buf.st_ino,
+                    printf("%lu %li %s %lu %u %s %li %s %s\n", buf.st_ino,
                            buf.st_blocks / posixly_correct_divisor, permissions, (unsigned long) buf.st_nlink,
                            buf.st_uid, grp->gr_name, buf.st_size, dateString,
                            file_path); //size of __nlink_t is plattform dependent. Cast to long int should be safe.
                 else
-                    printf("%9lu %7li %10s %3lu %8s %u %10li %s %s\n", buf.st_ino,
+                    printf("%lu %li %s %lu %s %u %li %s %s\n", buf.st_ino,
                            buf.st_blocks / posixly_correct_divisor, permissions, (unsigned long) buf.st_nlink,
                            pwd->pw_name, buf.st_gid, buf.st_size, dateString,
                            file_path); //size of __nlink_t is plattform dependent. Cast to long int should be safe.
@@ -361,6 +359,7 @@ bool do_file(const char* file_path, const char* const* parms) {
 
     return rc;
 }
+
 /**
  * \brief Checks permisson of a file and returns them in a permission string
  *
@@ -386,19 +385,47 @@ void getPermissionsString(__mode_t mode, char* permissions) {
         permissions[0] = 'c';
     else if (S_ISBLK(mode))
         permissions[0] = 'b';
+    else if (S_ISSOCK(mode))
+        permissions[0] = 's';
 
     if (S_IRUSR & mode)
         permissions[1] = 'r';
     if (S_IWUSR & mode)
         permissions[2] = 'w';
-    if (S_IXUSR & mode)
-        permissions[3] = 'x';
+
+    if (S_IXUSR & mode) {
+        if (S_ISUID & mode)
+            permissions[3] = 's';
+        else if (S_ISVTX & mode)
+            permissions[3] = 't';
+        else
+            permissions[3] = 'x';
+    } else {
+        if (S_ISUID & mode)
+            permissions[3] = 'S';
+        else if (S_ISVTX & mode)
+            permissions[3] = 'T';
+    }
+
     if (S_IRGRP & mode)
         permissions[4] = 'r';
     if (S_IWGRP & mode)
         permissions[5] = 'w';
-    if (S_IXGRP & mode)
-        permissions[6] = 'x';
+
+    if (S_IXGRP & mode) {
+        if (S_ISGID & mode)
+            permissions[6] = 's';
+        else if (S_ISVTX & mode)
+            permissions[6] = 't';
+        else
+            permissions[6] = 'x';
+    } else {
+        if (S_ISGID & mode)
+            permissions[6] = 'S';
+        else if (S_ISVTX & mode)
+            permissions[6] = 'T';
+    }
+
     if (S_IROTH & mode)
         permissions[7] = 'r';
     if (S_IWOTH & mode)
