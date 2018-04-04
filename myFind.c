@@ -25,6 +25,7 @@
 #include <libgen.h>
 #include <fnmatch.h>
 #include <stdbool.h>
+#include <error.h>
 // --------------------------------------------------------------- defines --
 
 // -------------------------------------------------------------- typedefs --
@@ -60,7 +61,6 @@ int main(int argc, char* argv[]) {
     //Getting Path
     char* path = NULL;
     int index = 1;
-
 
     //Preparing the Parms Array
     const char* parms[argc - index];
@@ -218,7 +218,7 @@ bool do_dir(const char* dir_name, const char* const* parms) {
         closedir(directory);
     } else {
         rc = false;
-        printf("myFind: '%s': %s \n", dir_name, strerror(errno));
+        error(0, errno, "%s", dir_name);
     }
 
     for (int i = 0; i < arrIndex && rc == true; i++) {
@@ -231,7 +231,7 @@ bool do_dir(const char* dir_name, const char* const* parms) {
 
     if (chdir("..") != 0) {
         rc = false;
-        printf("myFind: '%s': %s \n", dir_name, strerror(errno));
+        error(0, errno, "%s", dir_name);
     }
 
 
@@ -281,22 +281,22 @@ bool do_file(const char* file_path, const char* const* parms) {
                 grp = getgrgid(buf.st_gid);
 
                 if (pwd && grp)
-                    printf("%lu %li %s %lu %s %s %li %s %s\n", buf.st_ino,
+                    printf("%9lu %7li %10s %3lu %8s %8s %10li %s %s\n", buf.st_ino,
                            buf.st_blocks / posixly_correct_divisor, permissions, (unsigned long) buf.st_nlink,
                            pwd->pw_name, grp->gr_name, buf.st_size, dateString,
                            file_path); //size of __nlink_t is plattform dependent. Cast to long int should be safe.
                 else if (!pwd && !grp)
-                    printf("%lu %li %s %lu %u %u %li %s %s\n", buf.st_ino,
+                    printf("%9lu %7li %10s %3lu %u %u %10li %s %s\n", buf.st_ino,
                            buf.st_blocks / posixly_correct_divisor, permissions, (unsigned long) buf.st_nlink,
                            buf.st_uid, buf.st_gid, buf.st_size, dateString,
                            file_path); //size of __nlink_t is plattform dependent. Cast to long int should be safe.
                 else if (!pwd)
-                    printf("%lu %li %s %lu %u %s %li %s %s\n", buf.st_ino,
+                    printf("%9lu %7li %10s %3lu %u %8s %10li %s %s\n", buf.st_ino,
                            buf.st_blocks / posixly_correct_divisor, permissions, (unsigned long) buf.st_nlink,
                            buf.st_uid, grp->gr_name, buf.st_size, dateString,
                            file_path); //size of __nlink_t is plattform dependent. Cast to long int should be safe.
                 else
-                    printf("%lu %li %s %lu %s %u %li %s %s\n", buf.st_ino,
+                    printf("%9lu %7li %10s %3lu %8s %u %10li %s %s\n", buf.st_ino,
                            buf.st_blocks / posixly_correct_divisor, permissions, (unsigned long) buf.st_nlink,
                            pwd->pw_name, buf.st_gid, buf.st_size, dateString,
                            file_path); //size of __nlink_t is plattform dependent. Cast to long int should be safe.
@@ -320,7 +320,7 @@ bool do_file(const char* file_path, const char* const* parms) {
                             break;
                     } else {
                         rc = false;
-                        fprintf(stderr, "myFind: '%s' is not the name of a known user \n", parms[i + 1]);
+                        error(0, 0, "'%s' is not the name of a known user", parms[i + 1]);
                         break;
                     }
                 }
@@ -352,7 +352,7 @@ bool do_file(const char* file_path, const char* const* parms) {
         }
     } else {
         rc = EXIT_FAILURE;
-        printf("myFind: %s \n", strerror(errno));
+        error(0, errno, "%s", file_path);
     }
 
     free(tempPath);
