@@ -199,6 +199,7 @@ int main(int argc, char* argv[]) {
  */
 bool do_dir(const char* dir_name, const char* const* parms) {
     bool rc = true;
+    bool dirEntered;
     DIR* directory = NULL;
     struct dirent* entry;
     int arrSize = 10;
@@ -217,6 +218,7 @@ bool do_dir(const char* dir_name, const char* const* parms) {
     directory = opendir(dirName);
 
     if (rc && directory && chdir(dirName) == 0) {
+        dirEntered = true;
         while ((entry = readdir(directory))) {
             if (strcmp(entry->d_name, "..") == 0 ||
                 strcmp(entry->d_name, ".") == 0)
@@ -258,7 +260,7 @@ bool do_dir(const char* dir_name, const char* const* parms) {
         }
 
     } else {
-        rc = false;
+        dirEntered = false;
         error(0, errno, "%s", dir_name);
     }
 
@@ -272,7 +274,7 @@ bool do_dir(const char* dir_name, const char* const* parms) {
     free(tempPath);
     free(dir_array);
 
-    if (chdir("..") != 0) {
+    if (dirEntered && chdir("..") != 0) {
         rc = false;
         error(0, errno, "%s", dir_name);
     }
