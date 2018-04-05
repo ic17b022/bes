@@ -42,8 +42,8 @@ void getPermissionsString(__mode_t mode, char* permissions);
 
 void getDateString(char* s, size_t size, time_t time);
 
+void printLsOutput(struct stat stat, const char* filepath);
 
-int getDigitsCountFromInt(int i);
 
 /**
  * \brief
@@ -70,7 +70,8 @@ int main(int argc, char* argv[]) {
 
     if (argc < 2) {
         iRc = EXIT_FAILURE;
-        error(0, 0, "Ivalid arguments: myFind needs at least one Argument\nCorrect usage: myfind <file or directory> [ <aktion> ] ...");
+        error(0, 0,
+              "Ivalid arguments: myFind needs at least one Argument\nCorrect usage: myfind <file or directory> [ <aktion> ] ...");
     }
     if (iRc == EXIT_SUCCESS) {
         path = malloc(strlen(argv[index]) + 1);
@@ -97,7 +98,7 @@ int main(int argc, char* argv[]) {
                     index = index + 2;
                     continue;
                 } else {
-                    error(0, 0, "Ivalid argument: %s Correct usage: -user <name>/<uid>",argv[index]);
+                    error(0, 0, "Ivalid argument: %s Correct usage: -user <name>/<uid>", argv[index]);
                     iRc = EXIT_FAILURE;
                     break;
                 }
@@ -109,33 +110,34 @@ int main(int argc, char* argv[]) {
                     index = index + 2;
                     continue;
                 } else {
-                    error(0, 0, "Ivalid argument: %s Correct usage: -name <pattern>",argv[index]);
+                    error(0, 0, "Ivalid argument: %s Correct usage: -name <pattern>", argv[index]);
                     iRc = EXIT_FAILURE;
                     break;
                 }
             }
             if (strcmp(argv[index], "-type") == 0) {
-                if (argv[index + 1] != NULL){
-                    if(strcmp(argv[index + 1], "b") == 0 ||
-                       strcmp(argv[index + 1], "c") == 0 ||
-                       strcmp(argv[index + 1], "d") == 0 ||
-                       strcmp(argv[index + 1], "p") == 0 ||
-                       strcmp(argv[index + 1], "f") == 0 ||
-                       strcmp(argv[index + 1], "l") == 0 ||
-                       strcmp(argv[index + 1], "s") == 0) {
-                    parms[index - 2] = argv[index];
-                    parms[index - 1] = argv[index + 1];
-                    index = index + 2;
-                    continue;
+                if (argv[index + 1] != NULL) {
+                    if (strcmp(argv[index + 1], "b") == 0 ||
+                        strcmp(argv[index + 1], "c") == 0 ||
+                        strcmp(argv[index + 1], "d") == 0 ||
+                        strcmp(argv[index + 1], "p") == 0 ||
+                        strcmp(argv[index + 1], "f") == 0 ||
+                        strcmp(argv[index + 1], "l") == 0 ||
+                        strcmp(argv[index + 1], "s") == 0) {
+                        parms[index - 2] = argv[index];
+                        parms[index - 1] = argv[index + 1];
+                        index = index + 2;
+                        continue;
                     } else {
-                        error(0, 0, "Ivalid argument: %s %s Correct usage: -type [bcdpfls]", argv[index], argv[index + 1]);
+                        error(0, 0, "Ivalid argument: %s %s Correct usage: -type [bcdpfls]", argv[index],
+                              argv[index + 1]);
                         iRc = EXIT_FAILURE;
                         break;
                     }
                 } else {
-                error(0, 0, "Ivalid argument: %s Correct usage: -type [bcdpfls]",argv[index]);
-                iRc = EXIT_FAILURE;
-                break;
+                    error(0, 0, "Ivalid argument: %s Correct usage: -type [bcdpfls]", argv[index]);
+                    iRc = EXIT_FAILURE;
+                    break;
                 }
             }
             if (strcmp(argv[index], "-print") == 0) {
@@ -150,8 +152,9 @@ int main(int argc, char* argv[]) {
                 is_output_set++;
                 continue;
             }
-            error(0, 0, "Ivalid argument: %s \nSupported Arguments:\n-user <name>/<uid>\n-name <pattern>\n-type [bcdpfls]\n-print\n-ls",
-                   argv[index]);
+            error(0, 0,
+                  "Ivalid argument: %s \nSupported Arguments:\n-user <name>/<uid>\n-name <pattern>\n-type [bcdpfls]\n-print\n-ls",
+                  argv[index]);
             iRc = EXIT_FAILURE;
             break;
         }
@@ -232,7 +235,12 @@ bool do_dir(const char* dir_name, const char* const* parms) {
                 arrIndex++;
             }
         }
-        closedir(directory);
+
+        if (closedir(directory) != 0) {
+            rc = false;
+            error(0, errno, "%s", dir_name);
+        }
+
     } else {
         rc = false;
         error(0, errno, "%s", dir_name);
@@ -262,6 +270,10 @@ bool do_dir(const char* dir_name, const char* const* parms) {
  *     This function uses the lstat system call do gather information about the file. The information is passed
  *     to the print function. If the file is a directory, do_dir is recursivly called.
  *
+ *     On error handling of stdout failures: The program ist not put in a failstate on purpose. If we run in an
+ *     environment so volatile that stdout may fail, we might as well assume it could recover. In that case we would
+ *     not want to waste output of something as critical as find, would we now?
+ *
  *
  * \param	file_path   file to be checked by the function
  * \param   parms       parameter array defining which files should be printed as output
@@ -280,44 +292,11 @@ bool do_file(const char* file_path, const char* const* parms) {
     fileName = basename(tempPath);
     if (lstat(fileName, &buf) == 0) {
         while (parms[i]) {
-            if (strcmp(parms[i], "-print") == 0)
-                printf("%s\n", file_path);
-            else if (strcmp(parms[i], "-ls") == 0) {
-                int posixly_correct_divisor = 2;
-                char permissions[11];
-                char dateString[13];
-                struct group* grp;
-                struct passwd* pwd;
-
-                if (getenv("POSIXLY_CORRECT"))
-                    posixly_correct_divisor = 1;
-
-                getPermissionsString(buf.st_mode, permissions);
-                getDateString(dateString, sizeof(dateString), buf.st_mtim.tv_sec);
-                pwd = getpwuid(buf.st_uid);
-                grp = getgrgid(buf.st_gid);
-
-                if (pwd && grp)
-                    printf("%9lu %7li %10s %3lu %8s %8s %10li %s %s\n", buf.st_ino,
-                           buf.st_blocks / posixly_correct_divisor, permissions, (unsigned long) buf.st_nlink,
-                           pwd->pw_name, grp->gr_name, buf.st_size, dateString,
-                           file_path); //size of __nlink_t is plattform dependent. Cast to long int should be safe.
-                else if (!pwd && !grp)
-                    printf("%9lu %7li %10s %3lu %u %u %10li %s %s\n", buf.st_ino,
-                           buf.st_blocks / posixly_correct_divisor, permissions, (unsigned long) buf.st_nlink,
-                           buf.st_uid, buf.st_gid, buf.st_size, dateString,
-                           file_path); //size of __nlink_t is plattform dependent. Cast to long int should be safe.
-                else if (!pwd)
-                    printf("%9lu %7li %10s %3lu %u %8s %10li %s %s\n", buf.st_ino,
-                           buf.st_blocks / posixly_correct_divisor, permissions, (unsigned long) buf.st_nlink,
-                           buf.st_uid, grp->gr_name, buf.st_size, dateString,
-                           file_path); //size of __nlink_t is plattform dependent. Cast to long int should be safe.
-                else
-                    printf("%9lu %7li %10s %3lu %8s %u %10li %s %s\n", buf.st_ino,
-                           buf.st_blocks / posixly_correct_divisor, permissions, (unsigned long) buf.st_nlink,
-                           pwd->pw_name, buf.st_gid, buf.st_size, dateString,
-                           file_path); //size of __nlink_t is plattform dependent. Cast to long int should be safe.
-
+            if (strcmp(parms[i], "-print") == 0) {
+                if (printf("%s\n", file_path) < 0) //+1 for \n
+                    error(0, errno, "Problem printing to stdout!");
+            } else if (strcmp(parms[i], "-ls") == 0) {
+                printLsOutput(buf, file_path);
             } else if (strcmp(parms[i], "-user") == 0) {
                 struct passwd* pwd = NULL;
                 pwd = getpwnam(parms[i + 1]);
@@ -368,7 +347,7 @@ bool do_file(const char* file_path, const char* const* parms) {
             rc = do_dir(file_path, parms);
         }
     } else {
-        rc = EXIT_FAILURE;
+        rc = false;
         error(0, errno, "%s", file_path);
     }
 
@@ -449,18 +428,44 @@ void getDateString(char* s, size_t size, time_t time) {
     strftime(s, size, "%b %e %H:%M", localtime(&time));
 }
 
-/* negative numbers get treated the same as positive ones. The sign is not counted */
-int getDigitsCountFromInt(int i) {
-    int n = 0;
+void printLsOutput(struct stat stat, const char* filepath) {
+    int posixly_correct_divisor = 2;
+    char permissions[11];
+    char dateString[13];
+    struct group* grp;
+    struct passwd* pwd;
 
-    if (i == 0)
-        return 1;
+    if (getenv("POSIXLY_CORRECT"))
+        posixly_correct_divisor = 1;
 
-    while (i) {
-        i /= 10;
-        n++;
+    getPermissionsString(stat.st_mode, permissions);
+    getDateString(dateString, sizeof(dateString), stat.st_mtim.tv_sec);
+    pwd = getpwuid(stat.st_uid);
+    grp = getgrgid(stat.st_gid);
+
+    //size of __nlink_t is plattform dependent. Cast to long int should be safe.
+    if (printf("%9lu %7li %10s %3lu ", stat.st_ino, stat.st_blocks / posixly_correct_divisor, permissions,
+               (unsigned long) stat.st_nlink) < 0)
+        error(0, errno, "Problem printing to stdout!");
+
+    if (pwd) {
+        if (printf("%8s ", pwd->pw_name) < 0)
+            error(0, errno, "Problem printing to stdout!");
+    } else {
+        if (printf("%8u ", stat.st_uid) < 0)
+            error(0, errno, "Problem printing to stdout!");
     }
-    return n;
+
+    if (grp) {
+        if (printf("%8s ", grp->gr_name) < 0)
+            error(0, errno, "Problem printing to stdout!");
+    } else {
+        if (printf("%8u ", stat.st_gid) < 0)
+            error(0, errno, "Problem printing to stdout!");
+    }
+
+    if (printf("%10li %s %s\n", stat.st_size, dateString, filepath) < 0)
+        error(0, errno, "Problem printing to stdout!");
 }
 // =================================================================== eof ==
 
