@@ -388,49 +388,43 @@ void getPermissionsString(__mode_t mode, char* permissions) {
     else if (S_ISSOCK(mode))
         permissions[0] = 's';
 
+
     if (S_IRUSR & mode)
         permissions[1] = 'r';
     if (S_IWUSR & mode)
         permissions[2] = 'w';
 
-    if (S_IXUSR & mode) {
-        if (S_ISUID & mode)
-            permissions[3] = 's';
-        else if (S_ISVTX & mode)
-            permissions[3] = 't';
-        else
-            permissions[3] = 'x';
-    } else {
-        if (S_ISUID & mode)
-            permissions[3] = 'S';
-        else if (S_ISVTX & mode)
-            permissions[3] = 'T';
-    }
+    if (S_IXUSR & mode && S_ISUID & mode)
+        permissions[3] = 's';
+    else if (S_ISUID & mode)
+        permissions[3] = 'S';
+    else if (S_IXUSR & mode)
+        permissions[3] = 'x';
+
 
     if (S_IRGRP & mode)
         permissions[4] = 'r';
     if (S_IWGRP & mode)
         permissions[5] = 'w';
 
-    if (S_IXGRP & mode) {
-        if (S_ISGID & mode)
-            permissions[6] = 's';
-        else if (S_ISVTX & mode)
-            permissions[6] = 't';
-        else
-            permissions[6] = 'x';
-    } else {
-        if (S_ISGID & mode)
-            permissions[6] = 'S';
-        else if (S_ISVTX & mode)
-            permissions[6] = 'T';
-    }
+    if (S_IXGRP & mode && S_ISGID & mode)
+        permissions[6] = 's';
+    else if (S_ISGID & mode)
+        permissions[6] = 'S';
+    else if (S_IXGRP & mode)
+        permissions[6] = 'x';
+
 
     if (S_IROTH & mode)
         permissions[7] = 'r';
     if (S_IWOTH & mode)
         permissions[8] = 'w';
-    if (S_IXOTH & mode)
+
+    if (S_IXOTH & mode && S_ISVTX & mode)
+        permissions[9] = 't';
+    else if (S_ISVTX & mode)
+        permissions[9] = 'T';
+    else if (S_IXOTH & mode)
         permissions[9] = 'x';
 }
 
