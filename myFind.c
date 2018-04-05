@@ -205,34 +205,50 @@ bool do_dir(const char* dir_name, const char* const* parms) {
     int arrIndex = 0;
     char* tempPath = NULL;
     char* dirName = NULL;
-    char** dir_array = malloc(sizeof(char*) * arrSize);  //TODO: and if not?
+
+    char** dir_array = malloc(sizeof(char*) * arrSize);
+    if (!dir_array) {
+        rc = false;
+        error(0, errno, "malloc failed");
+    }
 
     tempPath = strdup(dir_name);
     dirName = basename(tempPath);
     directory = opendir(dirName);
 
-    if (directory && chdir(dirName) == 0) {
+    if (rc && directory && chdir(dirName) == 0) {
         while ((entry = readdir(directory))) {
             if (strcmp(entry->d_name, "..") == 0 ||
                 strcmp(entry->d_name, ".") == 0)
                 continue;
 
             if (arrIndex == arrSize) {
+                char** temp = NULL;
+
                 arrSize *= 2;
-                dir_array = realloc(dir_array, sizeof(char*) * arrSize); //TODO: and if not?
+                temp = realloc(dir_array, sizeof(char*) * arrSize); //can't assign the output of realloc directly to
+                if (temp)                                           //dir_array because if realloc fails dir_array will
+                    dir_array = temp;                               //be NULL and the memory it had assigned before lost
+                else {
+                    rc = false;
+                    error(0, errno, "realloc failed");
+                }
+
             }
 
 
             dir_array[arrIndex] = malloc(strlen(dir_name) + strlen(entry->d_name) + 2);  // +1 for '/', +1 for '\0'
-            if (dir_array[arrIndex]) {     //TODO: and if not?
+            if (dir_array[arrIndex]) {
                 dir_array[arrIndex][0] = '\0';
 
                 strcat(dir_array[arrIndex], dir_name);
                 strcat(dir_array[arrIndex], "/");
                 strcat(dir_array[arrIndex], entry->d_name);
 
-                //do_file(temp, parms);
                 arrIndex++;
+            } else {
+                rc = false;
+                error(0, errno, "malloc failed");
             }
         }
 
@@ -246,8 +262,10 @@ bool do_dir(const char* dir_name, const char* const* parms) {
         error(0, errno, "%s", dir_name);
     }
 
-    for (int i = 0; i < arrIndex && rc == true; i++) {
-        rc = do_file(dir_array[i], parms);
+    for (int i = 0; i < arrIndex; i++) {
+        if (rc)
+            rc = do_file(dir_array[i], parms);
+
         free(dir_array[i]);
     }
 
