@@ -78,12 +78,13 @@ int main(int argc, char* argv[]) {
         if (path == NULL) {
             error(0, 0, "failed to allocate memory");
             iRc = EXIT_FAILURE;
+        } else {
+            strcpy(path, argv[index]);
+            if (path[strlen(path) - 1] == '/') {
+                path[strlen(path) - 1] = '\0';
+            }
+            index++;
         }
-        strcpy(path, argv[index]);
-        if (path[strlen(path) - 1] == '/') {
-            path[strlen(path) - 1] = '\0';
-        }
-        index++;
     }
     if (iRc == EXIT_SUCCESS) {
         //index=2;
