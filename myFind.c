@@ -70,7 +70,7 @@ int main(int argc, char* argv[]) {
 
     if (argc < 2) {
         iRc = EXIT_FAILURE;
-        printf("Ivalid arguments: myfind needs at least one Argument\nCorrect usage: myfind <file or directory> [ <aktion> ] ...\n");
+        error(0, errno, "Ivalid arguments: myFind needs at least one Argument\nCorrect usage: myfind <file or directory> [ <aktion> ] ...");
     }
     if (iRc == EXIT_SUCCESS) {
         path = malloc(strlen(argv[index]) + 1);
@@ -90,8 +90,9 @@ int main(int argc, char* argv[]) {
                     index = index + 2;
                     continue;
                 } else {
-                    printf("Ivalid arguments\nCorrect usage: -user <name>/<uid>\n");
+                    error(0, errno, "Ivalid argument: %s Correct usage: -user <name>/<uid>",argv[index]);
                     iRc = EXIT_FAILURE;
+                    break;
                 }
             }
             if (strcmp(argv[index], "-name") == 0) {
@@ -101,25 +102,33 @@ int main(int argc, char* argv[]) {
                     index = index + 2;
                     continue;
                 } else {
-                    printf("Ivalid arguments\nCorrect usage: -name <pattern>\n");
+                    error(0, errno, "Ivalid argument: %s Correct usage: -name <pattern>",argv[index]);
                     iRc = EXIT_FAILURE;
+                    break;
                 }
             }
             if (strcmp(argv[index], "-type") == 0) {
-                if (argv[index + 1] != NULL && (strcmp(argv[index + 1], "b") == 0 ||
-                                                strcmp(argv[index + 1], "c") == 0 ||
-                                                strcmp(argv[index + 1], "d") == 0 ||
-                                                strcmp(argv[index + 1], "p") == 0 ||
-                                                strcmp(argv[index + 1], "f") == 0 ||
-                                                strcmp(argv[index + 1], "l") == 0 ||
-                                                strcmp(argv[index + 1], "s") == 0)) {
+                if (argv[index + 1] != NULL){
+                    if(strcmp(argv[index + 1], "b") == 0 ||
+                       strcmp(argv[index + 1], "c") == 0 ||
+                       strcmp(argv[index + 1], "d") == 0 ||
+                       strcmp(argv[index + 1], "p") == 0 ||
+                       strcmp(argv[index + 1], "f") == 0 ||
+                       strcmp(argv[index + 1], "l") == 0 ||
+                       strcmp(argv[index + 1], "s") == 0) {
                     parms[index - 2] = argv[index];
                     parms[index - 1] = argv[index + 1];
                     index = index + 2;
                     continue;
+                    } else {
+                        error(0, errno, "Ivalid argument: %s %s Correct usage: -type [bcdpfls]", argv[index], argv[index + 1]);
+                        iRc = EXIT_FAILURE;
+                        break;
+                    }
                 } else {
-                    printf("Ivalid arguments\nCorrect usage: -type [bcdpfls]\n");
-                    iRc = EXIT_FAILURE;
+                error(0, errno, "Ivalid argument: %s Correct usage: -type [bcdpfls]",argv[index]);
+                iRc = EXIT_FAILURE;
+                break;
                 }
             }
             if (strcmp(argv[index], "-print") == 0) {
@@ -134,7 +143,7 @@ int main(int argc, char* argv[]) {
                 is_output_set++;
                 continue;
             }
-            printf("Ivalid argument: %s \nSupported Arguments:\n-user <name>/<uid>\n-name <pattern>\n-type [bcdpfls]\n-print\n-ls",
+            error(0, errno, "Ivalid argument: %s \nSupported Arguments:\n-user <name>/<uid>\n-name <pattern>\n-type [bcdpfls]\n-print\n-ls",
                    argv[index]);
             iRc = EXIT_FAILURE;
             break;
@@ -145,13 +154,12 @@ int main(int argc, char* argv[]) {
     //call do_file
     if (iRc == EXIT_SUCCESS) {
         char* tempPath = strdup(path);
-        if (chdir(dirname(tempPath)) ==
-            0) {//TODO: path darf kein trailing / haben. // Nachdem das script ohne / testet -> optional?
+        if (chdir(dirname(tempPath)) == 0) {
             if (!do_file(path, parms)) {
                 iRc = EXIT_FAILURE;
             }
         } else {
-            printf("myFind: '%s': %s \n", path, strerror(errno));
+            error(0, errno, "myFind: '%s': %s \n", path, strerror(errno));
             iRc = EXIT_FAILURE;
         }
 
@@ -174,7 +182,7 @@ int main(int argc, char* argv[]) {
  * \param	dir_name    directory to be opened by the function
  * \param   parms       parameter array defining which files should be printed as output
  *
- * \return	      void
+ * \return	rc          returns true if function exited witout an error and false if an error occured
  *
  */
 bool do_dir(const char* dir_name, const char* const* parms) {
@@ -249,7 +257,7 @@ bool do_dir(const char* dir_name, const char* const* parms) {
  * \param	file_path   file to be checked by the function
  * \param   parms       parameter array defining which files should be printed as output
  *
- * \return	      void
+ * \return	rc          returns true if function exited witout an error and false if an error occured
  *
  */
 bool do_file(const char* file_path, const char* const* parms) {
@@ -369,7 +377,7 @@ bool do_file(const char* file_path, const char* const* parms) {
  * \param	mode              mode?
  * \param   permissions       pointer to a permission string that is filled in the funciton
  *
- * \return	      void
+ * \return	void
  *
  */
 void getPermissionsString(__mode_t mode, char* permissions) {
