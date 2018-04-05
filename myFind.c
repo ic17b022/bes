@@ -70,16 +70,22 @@ int main(int argc, char* argv[]) {
 
     if (argc < 2) {
         iRc = EXIT_FAILURE;
-        error(0, errno, "Ivalid arguments: myFind needs at least one Argument\nCorrect usage: myfind <file or directory> [ <aktion> ] ...");
+        error(0, 0, "Ivalid arguments: myFind needs at least one Argument\nCorrect usage: myfind <file or directory> [ <aktion> ] ...");
     }
     if (iRc == EXIT_SUCCESS) {
         path = malloc(strlen(argv[index]) + 1);
+        //Check if Memory was allocated
+        if (path == NULL) {
+            error(0, 0, "failed to allocate memory");
+            iRc = EXIT_FAILURE;
+        }
         strcpy(path, argv[index]);
         if (path[strlen(path) - 1] == '/') {
             path[strlen(path) - 1] = '\0';
         }
         index++;
-
+    }
+    if (iRc == EXIT_SUCCESS) {
         //index=2;
         //Check User Input
         while (index < argc) {
@@ -90,7 +96,7 @@ int main(int argc, char* argv[]) {
                     index = index + 2;
                     continue;
                 } else {
-                    error(0, errno, "Ivalid argument: %s Correct usage: -user <name>/<uid>",argv[index]);
+                    error(0, 0, "Ivalid argument: %s Correct usage: -user <name>/<uid>",argv[index]);
                     iRc = EXIT_FAILURE;
                     break;
                 }
@@ -102,7 +108,7 @@ int main(int argc, char* argv[]) {
                     index = index + 2;
                     continue;
                 } else {
-                    error(0, errno, "Ivalid argument: %s Correct usage: -name <pattern>",argv[index]);
+                    error(0, 0, "Ivalid argument: %s Correct usage: -name <pattern>",argv[index]);
                     iRc = EXIT_FAILURE;
                     break;
                 }
@@ -121,12 +127,12 @@ int main(int argc, char* argv[]) {
                     index = index + 2;
                     continue;
                     } else {
-                        error(0, errno, "Ivalid argument: %s %s Correct usage: -type [bcdpfls]", argv[index], argv[index + 1]);
+                        error(0, 0, "Ivalid argument: %s %s Correct usage: -type [bcdpfls]", argv[index], argv[index + 1]);
                         iRc = EXIT_FAILURE;
                         break;
                     }
                 } else {
-                error(0, errno, "Ivalid argument: %s Correct usage: -type [bcdpfls]",argv[index]);
+                error(0, 0, "Ivalid argument: %s Correct usage: -type [bcdpfls]",argv[index]);
                 iRc = EXIT_FAILURE;
                 break;
                 }
@@ -143,14 +149,16 @@ int main(int argc, char* argv[]) {
                 is_output_set++;
                 continue;
             }
-            error(0, errno, "Ivalid argument: %s \nSupported Arguments:\n-user <name>/<uid>\n-name <pattern>\n-type [bcdpfls]\n-print\n-ls",
+            error(0, 0, "Ivalid argument: %s \nSupported Arguments:\n-user <name>/<uid>\n-name <pattern>\n-type [bcdpfls]\n-print\n-ls",
                    argv[index]);
             iRc = EXIT_FAILURE;
             break;
         }
     }
     //add -print if no other output action was defined
-    if (!is_output_set) parms[index - 2] = "-print";
+    if (iRc == EXIT_SUCCESS) {
+        if (!is_output_set) parms[index - 2] = "-print";
+    }
     //call do_file
     if (iRc == EXIT_SUCCESS) {
         char* tempPath = strdup(path);
