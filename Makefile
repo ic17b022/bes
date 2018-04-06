@@ -1,6 +1,6 @@
 ##
 ## @file Makefile
-## myFind - a simplified version of find(1)
+## myfind - a simplified version of find(1)
 ## Beispiel 1
 ##
 ## @author Manuel Seifner	 <ic17b022@technikum-wien.at>
@@ -39,14 +39,14 @@ EXCLUDE_PATTERN=footrulewidth
 ##
 
 .PHONY: all
-all: myFind
+all: myfind
 
 myfind: $(OBJECTS)
 	$(CC) $(CFLAGS) -o $@ $^
 
 .PHONY: clean
 clean:
-	$(RM) *.o *~ myFind
+	$(RM) *.o *~ myfind
 
 .PHONY: distclean
 distclean: clean
