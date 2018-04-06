@@ -464,7 +464,7 @@ void printLsOutput(struct stat stat, const char* filepath) {
     grp = getgrgid(stat.st_gid);
 
     //size of __nlink_t is plattform dependent. Cast to long int should be safe.
-    if (printf("%9lu %7li %10s %3lu ", stat.st_ino, stat.st_blocks / posixly_correct_divisor, permissions,
+    if (printf("%6lu %7li %10s %3lu ", stat.st_ino, stat.st_blocks / posixly_correct_divisor, permissions,
                (unsigned long) stat.st_nlink) < 0)
         error(0, errno, "Problem printing to stdout!");
 
@@ -484,8 +484,35 @@ void printLsOutput(struct stat stat, const char* filepath) {
             error(0, errno, "Problem printing to stdout!");
     }
 
-    if (printf("%10li %s %s\n", stat.st_size, dateString, filepath) < 0)
+    if (!S_ISBLK(stat.st_mode) && !S_ISCHR(stat.st_mode)) {
+        if (printf("%10li ", stat.st_size) < 0)
+            error(0, errno, "Problem printing to stdout!");
+    } else {
+        if (printf("  ") < 0)
+            error(0, errno, "Problem printing to stdout!");
+    }
+
+    if (printf("%s ", dateString) < 0)
         error(0, errno, "Problem printing to stdout!");
+
+    if (S_ISLNK(stat.st_mode)) {
+        char linkbuf[stat.st_size + 1];
+        const ssize_t charsread = readlink(filepath, linkbuf, stat.st_size);
+
+        if (charsread == -1) {
+            error(0, errno, "%s\n", filepath);
+        } else {
+            linkbuf[stat.st_size] = '\0';
+            if (printf("%s -> %s\n", filepath, linkbuf) < 0)
+                error(0, errno, "Problem printing to stdout!");
+        }
+
+
+    } else {
+        if (printf("%s\n", filepath) < 0)
+            error(0, errno, "Problem printing to stdout!");
+    }
+
 }
 // =================================================================== eof ==
 
