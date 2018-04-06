@@ -445,6 +445,19 @@ void getPermissionsString(__mode_t mode, char* permissions) {
         permissions[9] = 'x';
 }
 
+/**
+ * \brief Creates a formated date string from a timestamp
+ *
+ *      File permissions are passed to the function, are checked and put into
+ *
+ *
+ * \param	s           character array to return the finished date string
+ * \param   size        size of the character array
+ * \param   time        timestamp
+ *
+ * \return	void
+ *
+ */
 void getDateString(char* s, size_t size, time_t time) {
     strftime(s, size, "%b %e %H:%M", localtime(&time));
 }
