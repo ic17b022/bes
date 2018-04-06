@@ -1,16 +1,18 @@
 //*
 // @file myFind.c
-// Betriebssysteme myFind Beispiel
-// Beispiel 1
 //
-// @author Manuel Seifner
-// @author Oliver Safar
-// @date 2018/03/19
+// Betriebssysteme - Beispiel 1
+// myfind - a simplified version of find(1)
 //
-// @version 001
+// myfind recreate some of the functionality of find(1)
+//
+// @author Manuel Seifner	 <ic17b022@technikum-wien.at>
+// @author Oliver Safar		 <ic17b077@technikum-wien.at>
+// @date 2018/04/55
+//
+// @version 1.0
 //
 //
-
 // -------------------------------------------------------------- includes --
 #include <stdio.h>
 #include <dirent.h>
@@ -46,14 +48,31 @@ void printLsOutput(struct stat stat, const char* filepath);
 
 
 /**
- * \brief
+ * \brief A simple version of the find(1) function
  *
- *     Diese Funktion gibt den übergebenen Parameter
- *     auf der Konsole aus.
+ *     This find program tries to recreate some of the functionality of find(1).
+ *     Since this was a two person project only the following actions have been included
+ *     -user
+ *     -name
+ *     -type
+ *     -print
+ *     -ls
  *
- * \param	parameter  Auszugebender Parameter
- * \return	      Status-Code
+ *     The main function handles all argument checks. We do not want to start running through files until we are sure
+ *     that all arguments have been entered correctly. This however does not guarantee any output since contradicting arguments
+ *     can be entered without causing an error. Only missing/invalid arguments will return an error.
  *
+ *
+ *     If all arguments are valid do_file is called trying to find files matching the defined criteria.
+ *
+ *
+ * \param   argc       the number of arguments
+ * \param   argv[]     the arguments itselves (including the program name in argv[0])
+ *
+ *
+ * \return  iRc
+ * \retval  EXIT_SUCCESS when program finishes without error
+ * \retval  EXIT_FAILURE if an error occurs
  */
 int main(int argc, char* argv[]) {
     int iRc = EXIT_SUCCESS;
@@ -77,7 +96,7 @@ int main(int argc, char* argv[]) {
         path = malloc(strlen(argv[index]) + 1);
         //Check if Memory was allocated
         if (path == NULL) {
-            error(0, 0, "failed to allocate memory");
+             error(0, 0, "failed to allocate memory");
             iRc = EXIT_FAILURE;
         } else {
             strcpy(path, argv[index]);
@@ -185,7 +204,7 @@ int main(int argc, char* argv[]) {
 }
 
 /**
- * \brief Iterates over all Files in a directory and passes each file to the do-file function.
+ * \brief Iterates over all Files in a directory and passes each file to the do_file function.
  *
  *     This function uses the opendir system call to open a directory and then readdir to pass each file
  *     into the do_file function.
@@ -194,7 +213,9 @@ int main(int argc, char* argv[]) {
  * \param	dir_name    directory to be opened by the function
  * \param   parms       parameter array defining which files should be printed as output
  *
- * \return	rc          returns true if function exited witout an error and false if an error occured
+ * \return	rc
+ * \retval  true        if function exited witout
+ * \retval  false       if an error occured
  *
  */
 bool do_dir(const char* dir_name, const char* const* parms) {
@@ -290,7 +311,7 @@ bool do_dir(const char* dir_name, const char* const* parms) {
  *     This function uses the lstat system call do gather information about the file. The information is passed
  *     to the print function. If the file is a directory, do_dir is recursivly called.
  *
- *     On error handling of stdout failures: The program ist not put in a failstate on purpose. If we run in an
+ *     On error handling of stdout failures: The program is not put in a failstate on purpose. If we run in an
  *     environment so volatile that stdout may fail, we might as well assume it could recover. In that case we would
  *     not want to waste output of something as critical as find, would we now?
  *
@@ -298,7 +319,9 @@ bool do_dir(const char* dir_name, const char* const* parms) {
  * \param	file_path   file to be checked by the function
  * \param   parms       parameter array defining which files should be printed as output
  *
- * \return	rc          returns true if function exited witout an error and false if an error occured
+ * \return	\return	rc
+ * \retval  true        if function exited witout
+ * \retval  false       if an error occured
  *
  */
 bool do_file(const char* file_path, const char* const* parms) {
@@ -379,11 +402,12 @@ bool do_file(const char* file_path, const char* const* parms) {
 /**
  * \brief Checks permisson of a file and returns them in a permission string
  *
- *      File permissions are passed to the function, are checked and put into
+ *      File permissions passed to this function are turned into a permission string
+ *      indicating which permissions are set.
  *
  *
- * \param	mode              mode?
- * \param   permissions       pointer to a permission string that is filled in the funciton
+ * \param	mode              mode from the stat stuct, containing permission information
+ * \param   permissions       pointer to a permission string that is filled in the function
  *
  * \return	void
  *
@@ -461,6 +485,21 @@ void getDateString(char* s, size_t size, time_t time) {
     strftime(s, size, "%b %e %H:%M", localtime(&time));
 }
 
+/**
+ * \brief Print function used when output option "-ls" is selected
+ *
+ *      This function handles the more intricate output requireing to gether more information
+ *      if the -ls option is chosen.
+ *      The functions getDateString and getPermissionString are used to build the date and permission
+ *      stings needed for the output of ls
+ *
+ *
+ * \param   stat        struct containing file information
+ * \param   filepath    path to the file to be output
+ *
+ * \return	void
+ *
+ */
 void printLsOutput(struct stat stat, const char* filepath) {
     int posixly_correct_divisor = 2;
     char permissions[11];
