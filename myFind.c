@@ -50,7 +50,8 @@ void printLsOutput(struct stat stat, const char* filepath);
 /**
  * \brief A simple version of the find(1) function
  *
- *     This find program tries to recreate some of the functionality of find(1).
+ *     This is the starting point of the myfind program.
+ *     It tries to recreate some of the functionality of find(1).
  *     Since this was a two person project only the following actions have been included
  *     -user
  *     -name
